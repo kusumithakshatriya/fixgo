@@ -51,7 +51,7 @@ export default function CustomerHomeScreen() {
                 key={service.name}
                 accessibilityRole="button"
                 accessibilityLabel={`Request ${service.name}`}
-                onPress={() => router.push('/repair-request' as Href)}
+                onPress={() => router.push({ pathname: '/repair-request', params: { service: service.name } } as Href)}
                 style={({ pressed }) => [styles.categoryCard, pressed && styles.pressed]}>
                 <View style={styles.categoryIcon}>
                   <ThemedText style={styles.categoryIconText}>{service.icon}</ThemedText>
