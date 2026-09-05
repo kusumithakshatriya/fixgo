@@ -1,0 +1,6 @@
+import { SymbolView } from 'expo-symbols';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { FixGoColors, Radius, Spacing } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+export function SearchBar() { return <Pressable accessibilityRole="search" accessibilityLabel="Search for a service" style={styles.container}><SymbolView name="magnifyingglass" size={20} tintColor={FixGoColors.textSecondary} /><ThemedText style={styles.placeholder}>Search for a service...</ThemedText><View style={styles.filter}><SymbolView name="slider.horizontal.3" size={18} tintColor={FixGoColors.primary} /></View></Pressable>; }
+const styles = StyleSheet.create({ container: { minHeight: 58, borderWidth: 1, borderColor: FixGoColors.border, borderRadius: Radius.medium, backgroundColor: FixGoColors.card, paddingLeft: Spacing.three, paddingRight: 9, flexDirection: 'row', alignItems: 'center', gap: 11, shadowColor: FixGoColors.shadow, shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }, placeholder: { color: FixGoColors.textSecondary, fontSize: 15, fontWeight: '600', flex: 1 }, filter: { height: 38, width: 38, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.small, backgroundColor: FixGoColors.accentSurface } });

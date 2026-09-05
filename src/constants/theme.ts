@@ -9,20 +9,22 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#152326',
+    background: '#F7F9F9',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#E2F7F9',
+    textSecondary: '#68777A',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F7F9F9',
+    background: '#123A40',
+    backgroundElement: '#143E44',
+    backgroundSelected: '#1B555B',
+    textSecondary: '#B4C7C9',
   },
 } as const;
+
+export const FixGoColors = { primary: '#123A40', primaryElevated: '#143E44', accent: '#64D9E5', background: '#F7F9F9', card: '#FFFFFF', text: '#152326', textSecondary: '#68777A', success: '#2E9B72', border: '#E4ECEC', accentSurface: '#E2F7F9', shadow: '#152326' } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
@@ -60,6 +62,8 @@ export const Spacing = {
   five: 32,
   six: 64,
 } as const;
+
+export const Radius = { small: 12, medium: 16, large: 20, pill: 999 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
