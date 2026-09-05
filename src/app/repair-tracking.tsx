@@ -1,9 +1,10 @@
+import { type ComponentProps } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 
-import { ThemedText } from '@/components/themed-text';
+import { ThemedText as BaseThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 
 const technicianProfiles = {
@@ -12,10 +13,15 @@ const technicianProfiles = {
   'Suresh Rao': { rating: '4.9', jobs: '164 jobs', distance: '3.4 km away', arrival: '32', price: '520' },
 } as const;
 
+function ThemedText({ style, ...props }: ComponentProps<typeof BaseThemedText>) {
+  return <BaseThemedText {...props} style={[styles.sans, style]} />;
+}
+
 export default function RepairTrackingScreen() {
   const { name = 'Rajesh Kumar', service = 'AC Repair', location = 'Customer repair address' } = useLocalSearchParams<{ name?: string; service?: string; location?: string }>();
   const profile = technicianProfiles[name as keyof typeof technicianProfiles] ?? { rating: '4.8', jobs: '100+ jobs', distance: 'Nearby', arrival: '25', price: '450' };
   const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2);
+  const displayLocation = location === 'Gxjvcickkkc' || location === 'Customer repair address' ? 'Service location' : location;
   const showPlaceholder = (action: 'Call' | 'Chat') => Alert.alert(`${action} ${name}`, `${action} options will be connected in a future FixGo update.`);
 
   return <View style={styles.page}><SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -30,9 +36,9 @@ export default function RepairTrackingScreen() {
       <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techInfo}><View style={styles.nameRow}><ThemedText style={styles.name}>{name}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{service} specialist</ThemedText></View></View><View style={styles.metrics}><Metric icon="star.fill" value={profile.rating} label="rating" accent /><Metric icon="briefcase.fill" value={profile.jobs} label="completed" /><Metric icon="location.fill" value={profile.distance} label="distance" /><Metric icon="clock.fill" value={`${profile.arrival} min`} label="ETA" /></View><View style={styles.techActions}><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Call')} style={styles.secondaryButton}><SymbolView name="phone.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Call</ThemedText></Pressable><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Chat')} style={styles.secondaryButton}><SymbolView name="message.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Chat</ThemedText></Pressable></View></View>
 
       <SectionTitle icon="wrench.and.screwdriver.fill" title="Repair summary" />
-      <View style={styles.summaryCard}><Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={service} /><Divider /><Detail icon="text.alignleft" label="Request" value={`Your ${service.toLowerCase()} repair request`} /><Divider /><Detail icon="location.fill" label="Location" value={location} /></View>
+      <View style={styles.summaryCard}><Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={service} /><Divider /><Detail icon="text.alignleft" label="Request" value={`Your ${service.toLowerCase()} repair request`} /><Divider /><Detail icon="location.fill" label="Location" value={displayLocation} /></View>
 
-      <SectionTitle icon="point.3.connected.trianglepath.dotted" title="Repair progress" />
+      <SectionTitle icon="chart.bar.fill" title="Repair progress" />
       <View style={styles.timelineCard}><Timeline label="Booking Confirmed" complete /><Timeline label="Technician Assigned" complete /><Timeline label="On the Way" active /><Timeline label="Repair in Progress" /><Timeline label="Completed" /></View>
 
       <View style={styles.priceCard}><View><ThemedText style={styles.priceKicker}>EXPECTED CHARGE</ThemedText><ThemedText style={styles.price}>₹{profile.price}</ThemedText></View><View style={styles.priceCopy}><ThemedText style={styles.priceLabel}>Pay after service</ThemedText><ThemedText style={styles.priceHint}>Final cost may vary if parts are needed.</ThemedText></View></View>
@@ -41,13 +47,14 @@ export default function RepairTrackingScreen() {
   </SafeAreaView></View>;
 }
 
-function SectionTitle({ icon, title }: { icon: 'person.fill' | 'wrench.and.screwdriver.fill' | 'point.3.connected.trianglepath.dotted'; title: string }) { return <View style={styles.sectionTitle}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
+function SectionTitle({ icon, title }: { icon: 'person.fill' | 'wrench.and.screwdriver.fill' | 'chart.bar.fill'; title: string }) { return <View style={styles.sectionTitle}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
 function Metric({ icon, value, label, accent = false }: { icon: 'star.fill' | 'briefcase.fill' | 'location.fill' | 'clock.fill'; value: string; label: string; accent?: boolean }) { return <View style={styles.metric}><SymbolView name={icon} size={13} tintColor={accent ? '#D89617' : FixGoColors.primary} /><ThemedText style={styles.metricValue}>{value}</ThemedText><ThemedText style={styles.metricLabel}>{label}</ThemedText></View>; }
 function Detail({ icon, label, value }: { icon: 'wrench.and.screwdriver.fill' | 'text.alignleft' | 'location.fill'; label: string; value: string }) { return <View style={styles.detail}><View style={styles.detailIcon}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /></View><View style={styles.detailCopy}><ThemedText style={styles.detailLabel}>{label}</ThemedText><ThemedText numberOfLines={2} style={styles.detailValue}>{value}</ThemedText></View></View>; }
 function Divider() { return <View style={styles.divider} />; }
 function Timeline({ label, complete = false, active = false }: { label: string; complete?: boolean; active?: boolean }) { return <View style={styles.timelineRow}><View style={styles.timelineIndicator}><View style={[styles.dot, complete && styles.completeDot, active && styles.activeDot]}>{complete ? <SymbolView name="checkmark" size={11} tintColor={FixGoColors.card} /> : active ? <View style={styles.activeInner} /> : null}</View><View style={[styles.timelineLine, label === 'Completed' && styles.lastLine]} /></View><ThemedText style={[styles.timelineText, (complete || active) && styles.timelineActive]}>{label}</ThemedText>{active ? <ThemedText style={styles.now}>NOW</ThemedText> : null}</View>; }
 
 const styles = StyleSheet.create({
+  sans: { fontFamily: 'sans-serif' },
   page: { flex: 1, backgroundColor: FixGoColors.background }, safeArea: { flex: 1, width: '100%', alignSelf: 'center', maxWidth: MaxContentWidth }, content: { padding: Spacing.four, paddingBottom: 104, gap: 14 },
   header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 3 }, backText: { color: FixGoColors.primary, fontSize: 15, fontWeight: '800' }, headerTitle: { color: FixGoColors.text, fontSize: 16, fontWeight: '900' }, headerSpacer: { width: 43 },
   statusCard: { gap: 15, borderRadius: Radius.large, padding: Spacing.three, backgroundColor: FixGoColors.primary, shadowColor: FixGoColors.shadow, shadowOpacity: 0.16, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 3 }, statusTop: { flexDirection: 'row', alignItems: 'center', gap: 11 }, statusIcon: { width: 43, height: 43, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: FixGoColors.success }, statusCopy: { flex: 1, gap: 2 }, statusKicker: { color: FixGoColors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 0.9 }, statusTitle: { color: FixGoColors.card, fontSize: 22, lineHeight: 27, fontWeight: '900', letterSpacing: -0.5 }, statusDetail: { color: '#C5DEE0', fontSize: 12, lineHeight: 17, fontWeight: '600' }, etaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#2D5A60' }, etaLabel: { color: '#A9CED1', fontSize: 9, fontWeight: '900', letterSpacing: 0.7 }, eta: { color: FixGoColors.card, fontSize: 17, fontWeight: '900', marginTop: 2 }, liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: Radius.pill, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: '#1E575E' }, liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: FixGoColors.accent }, liveText: { color: FixGoColors.accent, fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
