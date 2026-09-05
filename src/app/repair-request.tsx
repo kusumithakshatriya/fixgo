@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { setActiveRequest } from '@/data/customer-flow';
 
 const services = ['AC Repair', 'Electrical', 'Plumbing', 'Appliance Repair', 'Other'] as const;
 type Service = (typeof services)[number];
@@ -52,8 +53,7 @@ export default function RepairRequestScreen() {
       return;
     }
     setValidationMessage('');
-    const mockRepairRequest = { id: `fixgo-${Date.now()}`, service, problem: problem.trim(), address: address.trim(), preferredTime: preferredTimeLabel, createdAt: new Date().toISOString() };
-    void mockRepairRequest;
+    setActiveRequest({ id: `fixgo-${Date.now()}`, service, description: problem.trim(), location: address.trim(), preferredTime: preferredTimeLabel, ...(selectedPhoto ? { photoUri: selectedPhoto.uri, photoName: selectedPhoto.name } : {}) });
     Alert.alert('Repair request created!', "Next, we'll show technicians who can help.", [
       { text: 'Continue', onPress: () => router.push({ pathname: '/technician-comparison', params: { service, location: address.trim() } } as unknown as Href) },
     ]);

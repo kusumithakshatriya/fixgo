@@ -5,18 +5,22 @@ import { SymbolView } from 'expo-symbols';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-
-const technicianProfiles = {
-  'Rajesh Kumar': { rating: '4.8', jobs: '127 jobs', specialty: 'AC repair specialist', distance: '1.2 km away' },
-  'Anil Kumar': { rating: '4.6', jobs: '89 jobs', specialty: 'AC repair specialist', distance: '2.1 km away' },
-  'Suresh Rao': { rating: '4.9', jobs: '164 jobs', specialty: 'AC repair specialist', distance: '3.4 km away' },
-} as const;
+import { confirmLocalBooking, getActiveRequest, getSelectedTechnician, technicians } from '@/data/customer-flow';
 
 export default function BookingConfirmationScreen() {
   const { name = 'Rajesh Kumar', service = 'AC Repair', price = '450', arrival = '25', location = 'Customer repair address' } = useLocalSearchParams<{ name?: string; service?: string; price?: string; arrival?: string; location?: string }>();
-  const profile = technicianProfiles[name as keyof typeof technicianProfiles] ?? { rating: '4.8', jobs: '100+ jobs', specialty: `${service} specialist`, distance: 'Nearby' };
+  const request = getActiveRequest();
+  const technician = getSelectedTechnician() ?? technicians.find((item) => item.name === name) ?? technicians[0];
+  const displayService = request?.service ?? service;
+  const displayLocation = request?.location ?? location;
+  const displayPrice = `${technician.price ?? Number(price)}`;
+  const displayArrival = `${technician.arrival ?? Number(arrival)}`;
   const initials = name.split(' ').map((part) => part[0]).join('').slice(0, 2);
-  const trackRepair = () => router.push({ pathname: '/repair-tracking', params: { name, service, location } } as unknown as Href);
+  const trackRepair = () => {
+    const localRequest = request ?? { id: 'direct-request', service: displayService, description: `Your ${displayService.toLowerCase()} request`, location: displayLocation, preferredTime: 'Earliest available' };
+    confirmLocalBooking(localRequest, technician);
+    router.push({ pathname: '/repair-tracking', params: { name: technician.name, service: displayService, price: displayPrice, arrival: displayArrival, location: displayLocation } } as unknown as Href);
+  };
 
   return <View style={styles.page}><SafeAreaView edges={['top']} style={styles.safeArea}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -24,17 +28,17 @@ export default function BookingConfirmationScreen() {
       <View style={styles.intro}><View style={styles.introIcon}><SymbolView name="checkmark" size={20} tintColor={FixGoColors.card} /></View><View style={styles.introCopy}><ThemedText style={styles.eyebrow}>ONE STEP AWAY</ThemedText><ThemedText style={styles.title}>Your expert is ready</ThemedText><ThemedText style={styles.subtitle}>Review the details below, then confirm your repair visit.</ThemedText></View></View>
 
       <SectionTitle icon="person.fill" title="Selected technician" />
-      <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techCopy}><View style={styles.nameRow}><ThemedText style={styles.name}>{name}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{profile.specialty}</ThemedText></View></View><View style={styles.techMetrics}><Stat icon="star.fill" value={profile.rating} label="rating" accent /><Stat icon="briefcase.fill" value={profile.jobs} label="completed" /><Stat icon="clock.fill" value={`${arrival} min`} label="ETA" /><Stat icon="location.fill" value={profile.distance} label="distance" /></View><View style={styles.chargeRow}><View><ThemedText style={styles.chargeLabel}>Expected charge</ThemedText><ThemedText style={styles.chargeHint}>Pay after the service</ThemedText></View><ThemedText style={styles.charge}>₹{price}</ThemedText></View></View>
+      <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techCopy}><View style={styles.nameRow}><ThemedText style={styles.name}>{technician.name}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{technician.specialization}</ThemedText></View></View><View style={styles.techMetrics}><Stat icon="star.fill" value={`${technician.rating}`} label="rating" accent /><Stat icon="briefcase.fill" value={`${technician.jobs} jobs`} label="completed" /><Stat icon="clock.fill" value={`${displayArrival} min`} label="ETA" /><Stat icon="location.fill" value={`${technician.distance} km away`} label="distance" /></View><View style={styles.chargeRow}><View><ThemedText style={styles.chargeLabel}>Expected charge</ThemedText><ThemedText style={styles.chargeHint}>Pay after the service</ThemedText></View><ThemedText style={styles.charge}>₹{displayPrice}</ThemedText></View></View>
 
       <SectionTitle icon="wrench.and.screwdriver.fill" title="Repair summary" />
-      <View style={styles.card}><Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={service} /><Divider /><Detail icon="text.alignleft" label="Problem description" value={`Your ${service.toLowerCase()} request`} /><Divider /><Detail icon="clock.fill" label="Preferred time" value="Earliest available" /><Divider /><Detail icon="location.fill" label="Repair location" value={location} multiLine /></View>
+      <View style={styles.card}><Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={displayService} /><Divider /><Detail icon="text.alignleft" label="Problem description" value={request?.description ?? `Your ${displayService.toLowerCase()} request`} /><Divider /><Detail icon="clock.fill" label="Preferred time" value={request?.preferredTime ?? 'Earliest available'} /><Divider /><Detail icon="location.fill" label="Repair location" value={displayLocation} multiLine /></View>
 
       <SectionTitle icon="calendar" title="Booking details" />
-      <View style={styles.card}><Detail icon="house.fill" label="Technician visit" value="Home service visit" /><Divider /><Detail icon="clock.fill" label="Estimated arrival" value={`Within ${arrival} minutes`} /><Divider /><Detail icon="indianrupeesign.circle.fill" label="Estimated service charge" value={`₹${price}`} /></View>
+      <View style={styles.card}><Detail icon="house.fill" label="Technician visit" value="Home service visit" /><Divider /><Detail icon="clock.fill" label="Estimated arrival" value={`Within ${displayArrival} minutes`} /><Divider /><Detail icon="indianrupeesign.circle.fill" label="Estimated service charge" value={`₹${displayPrice}`} /></View>
 
-      <View style={styles.priceCard}><View style={styles.priceTop}><View><ThemedText style={styles.priceKicker}>ESTIMATED TOTAL</ThemedText><ThemedText style={styles.priceValue}>₹{price}</ThemedText></View><View style={styles.priceIcon}><SymbolView name="indianrupeesign" size={21} tintColor={FixGoColors.primary} /></View></View><View style={styles.note}><SymbolView name="info.circle.fill" size={15} tintColor={FixGoColors.textSecondary} /><ThemedText style={styles.noteText}>Final price may vary if additional work or parts are required.</ThemedText></View></View>
+      <View style={styles.priceCard}><View style={styles.priceTop}><View><ThemedText style={styles.priceKicker}>ESTIMATED TOTAL</ThemedText><ThemedText style={styles.priceValue}>₹{displayPrice}</ThemedText></View><View style={styles.priceIcon}><SymbolView name="indianrupeesign" size={21} tintColor={FixGoColors.primary} /></View></View><View style={styles.note}><SymbolView name="info.circle.fill" size={15} tintColor={FixGoColors.textSecondary} /><ThemedText style={styles.noteText}>Final price may vary if additional work or parts are required.</ThemedText></View></View>
     </ScrollView>
-    <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><View style={styles.ctaContent}><View><ThemedText style={styles.ctaPriceLabel}>Expected charge</ThemedText><ThemedText style={styles.ctaPrice}>₹{price}</ThemedText></View><Pressable accessibilityRole="button" accessibilityLabel="Confirm booking" onPress={trackRepair} style={styles.confirmButton}><ThemedText style={styles.confirmText}>Confirm Booking</ThemedText><SymbolView name="arrow.right" size={16} tintColor={FixGoColors.card} /></Pressable></View></SafeAreaView>
+    <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><View style={styles.ctaContent}><View><ThemedText style={styles.ctaPriceLabel}>Expected charge</ThemedText><ThemedText style={styles.ctaPrice}>₹{displayPrice}</ThemedText></View><Pressable accessibilityRole="button" accessibilityLabel="Confirm booking" onPress={trackRepair} style={styles.confirmButton}><ThemedText style={styles.confirmText}>Confirm Booking</ThemedText><SymbolView name="arrow.right" size={16} tintColor={FixGoColors.card} /></Pressable></View></SafeAreaView>
   </SafeAreaView></View>;
 }
 

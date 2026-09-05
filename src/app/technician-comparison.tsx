@@ -6,13 +6,9 @@ import { SymbolView } from 'expo-symbols';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { setSelectedTechnician, technicians } from '@/data/customer-flow';
 
 type SortMode = 'Best Match' | 'Lowest Price' | 'Fastest Arrival' | 'Highest Rated';
-const technicians = [
-  { name: 'Rajesh Kumar', service: 'AC Repair', rating: 4.8, reviews: 127, years: 8, distance: 1.2, price: 450, arrival: 25, match: 94, reasons: ['Strong AC Repair expertise', 'Excellent customer rating', 'Closest available technician'] },
-  { name: 'Anil Kumar', service: 'AC Repair', rating: 4.6, reviews: 89, years: 5, distance: 2.1, price: 380, arrival: 18, match: 88, reasons: ['Most competitive estimated price', 'Fastest arrival time', 'Verified AC Repair experience'] },
-  { name: 'Suresh Rao', service: 'AC Repair', rating: 4.9, reviews: 164, years: 10, distance: 3.4, price: 520, arrival: 32, match: 91, reasons: ['Highest customer rating', 'Most repair experience', 'Strong service track record'] },
-];
 
 export default function TechnicianComparisonScreen() {
   const { service = 'AC Repair', location = 'Customer repair address' } = useLocalSearchParams<{ service?: string; location?: string }>();
@@ -26,6 +22,7 @@ export default function TechnicianComparisonScreen() {
   }), [sortMode]);
 
   function chooseTechnician(technician: (typeof technicians)[number]) {
+    setSelectedTechnician(technician);
     Alert.alert('Technician selected', `${technician.name} has been selected for your repair.`, [{ text: 'Continue', onPress: () => router.push({ pathname: '/booking-confirmation', params: { name: technician.name, service, price: `${technician.price}`, arrival: `${technician.arrival}`, location } } as unknown as Href) }]);
   }
 
