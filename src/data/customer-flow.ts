@@ -41,6 +41,7 @@ export const technicians: Technician[] = [
 let activeRequest: RepairRequest | null = null;
 let selectedTechnician: Technician | null = null;
 let confirmedBooking: LocalBooking | null = null;
+let onboarding = { phoneNumber: '', verified: false, customerName: '' };
 
 export function setActiveRequest(request: RepairRequest) { activeRequest = request; selectedTechnician = null; }
 export function getActiveRequest() { return activeRequest; }
@@ -51,3 +52,10 @@ export function confirmLocalBooking(request: RepairRequest, technician: Technici
   confirmedBooking = { id: `FG-${technician.id.slice(0, 2).toUpperCase()}-${technician.arrival}-${technician.price}`, request, technician, status: 'Technician Assigned' };
   return confirmedBooking;
 }
+
+export function setCustomerPhoneNumber(phoneNumber: string) { onboarding.phoneNumber = phoneNumber; }
+export function getCustomerPhoneNumber() { return onboarding.phoneNumber; }
+export function setCustomerVerified(verified: boolean) { onboarding.verified = verified; }
+export function isCustomerVerified() { return onboarding.verified; }
+export function setCustomerName(customerName: string) { onboarding.customerName = customerName.trim(); }
+export function getCustomerName() { return onboarding.customerName; }
