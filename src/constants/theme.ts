@@ -24,7 +24,9 @@ export const Colors = {
   },
 } as const;
 
-export const FixGoColors = { primary: '#123A40', primaryElevated: '#143E44', accent: '#64D9E5', background: '#F7F9F9', card: '#FFFFFF', text: '#152326', textSecondary: '#68777A', success: '#2E9B72', border: '#E4ECEC', accentSurface: '#E2F7F9', shadow: '#152326' } as const;
+export const FixGoColors = { primary: '#123A40', primaryElevated: '#143E44', accent: '#64D9E5', background: '#F7F9F9', card: '#FFFFFF', text: '#152326', textSecondary: '#68777A', success: '#2E9B72',
+  error: '#E33A3A',
+  warning: '#F59E0B', border: '#E4ECEC', accentSurface: '#E2F7F9', shadow: '#152326' } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 

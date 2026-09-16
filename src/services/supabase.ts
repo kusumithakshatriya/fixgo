@@ -1,4 +1,4 @@
-﻿import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { calculateDistanceKm } from '@/lib/location';
 
 export type ServiceEntity = {
@@ -10,18 +10,21 @@ export type ServiceEntity = {
   is_active: boolean;
 };
 
+
+
 export interface PartnerProfile {
   id: string;
-  bio: string | null;
-  profile_image_path: string | null;
+  bio?: string;
+  profile_image_path?: string;
   experience_years: number;
   rating: number;
-  total_jobs: number;
+  totalJobs: number;
   is_verified: boolean;
   is_online: boolean;
   is_available: boolean;
   service_radius_km: number;
-  users?: { name: string };
+  verification_status?: 'incomplete' | 'pending' | 'verified' | 'rejected' | 'suspended';
+  rejection_reason?: string;
 }
 
 export interface PartnerSkill {
@@ -78,7 +81,7 @@ export async function fetchTechniciansForService(
     console.error('[fetchTechnicians] Service query error:', serviceError.message);
     return [];
   }
-  
+
   if (!serviceData) {
     console.log('[fetchTechnicians] Service not found for name:', serviceName);
     return [];
@@ -86,45 +89,31 @@ export async function fetchTechniciansForService(
 
   const serviceId = serviceData.id;
 
-  // Step 2: Query partner_skills and join partner_profiles
-  const { data: skillsData, error: skillsError } = await supabase
-    .from('partner_skills')
-    .select(`
-      partner_id,
-      partner_profiles (
-        id,
-        rating,
-        total_jobs,
-        is_verified,
-        is_online,
-        is_available,
-        experience_years,
-        service_radius_km
-      )
-    `)
-    .eq('service_id', serviceId);
+      // Step 2: Query secure RPC to strictly get eligible technicians
+    const { data: eligibleData, error: rpcError } = await supabase
+      .rpc('get_eligible_technicians_for_service', { p_service_id: serviceId });
 
-  if (skillsError) {
-    console.error('[fetchTechnicians] Partner skills query error:', skillsError.message);
-    return [];
-  }
+    if (rpcError) {
+      console.error('[fetchTechnicians] Secure RPC error:', rpcError.message);
+      return [];
+    }
 
-  // Filter in memory for maximum reliability
-  const validProfiles = (skillsData || [])
-    .map((row: any) => row.partner_profiles)
-    .filter((profile: any) => 
-      profile && 
-      profile.is_verified === true && 
-      profile.is_online === true && 
-      profile.is_available === true
-    );
+    if (!eligibleData || eligibleData.length === 0) {
+      console.log('[fetchTechnicians] No strictly verified/online/available technicians found.');
+      return [];
+    }
 
-  if (validProfiles.length === 0) {
-    console.log('[fetchTechnicians] Found skills, but 0 profiles match verified/online/available.');
-    return [];
-  }
+    // Map RPC data back to expected shape
+    const validProfiles = eligibleData.map((row: any) => ({
+      id: row.partner_id,
+      rating: row.rating,
+      total_jobs: row.total_jobs,
+      is_verified: true, // Ensured by RPC
+      experience_years: row.experience_years,
+      service_radius_km: row.service_radius_km
+    }));
 
-  const partnerIds = validProfiles.map((p: any) => p.id);
+    const partnerIds = validProfiles.map((p: any) => p.id);
 
   // Step 3: Fetch the user names from public.users
   const { data: usersData, error: usersError } = await supabase
@@ -223,7 +212,7 @@ export async function fetchTechniciansForService(
         latitude: t.latitude!,
         longitude: t.longitude!
       }));
-    
+
     sentToRoutesApi = destinations.length;
 
     if (destinations.length > 0) {
@@ -287,12 +276,12 @@ export async function fetchActiveServices(): Promise<ServiceEntity[]> {
     .from('services')
     .select('*')
     .eq('is_active', true);
-    
+
   if (error) {
     console.error('Error fetching services:', error);
     throw error;
   }
-  
+
   return data || [];
 }
 
@@ -304,7 +293,7 @@ export async function testSupabaseConnection() {
     } else {
       console.log('Supabase client initialized');
     }
-    
+
     const services = await fetchActiveServices();
     console.log('Active services query succeeded');
     console.log(`Number of services returned: ${services.length}`);
@@ -330,9 +319,9 @@ export async function fetchPartnerServiceArea(partnerId: string): Promise<Partne
 }
 
 export async function upsertPartnerServiceArea(
-  partnerId: string, 
-  areaName: string, 
-  latitude: number, 
+  partnerId: string,
+  areaName: string,
+  latitude: number,
   longitude: number
 ): Promise<PartnerServiceArea> {
   const existing = await fetchPartnerServiceArea(partnerId);
@@ -439,14 +428,14 @@ export async function fetchCustomerBookings() {
   }
 
   const technicianIds = Array.from(new Set(data.map((b: any) => b.technician_id)));
-  
+
   let profilesMap = new Map();
   if (technicianIds.length > 0) {
     const { data: profiles } = await supabase
       .from('partner_profiles')
       .select('id, is_verified')
       .in('id', technicianIds);
-      
+
     if (profiles) {
       profilesMap = new Map(profiles.map(p => [p.id, p]));
     }
@@ -458,7 +447,7 @@ export async function fetchCustomerBookings() {
     const basePrice = sr?.services?.base_price || 299;
     const techUser = b.users as any;
     const techProfile = profilesMap.get(b.technician_id);
-    
+
     const paymentData = Array.isArray(b.payments) ? b.payments[0] : b.payments;
 
     return {
@@ -559,7 +548,7 @@ export async function fetchPartnerJobs(): Promise<PartnerJob[]> {
 export async function updateBookingStatus(bookingId: string, requestId: string, newStatus: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Authentication required");
-  
+
   // 1. Update Booking
   const { error: bookingError } = await supabase
     .from('bookings')
@@ -587,11 +576,13 @@ export async function updateBookingStatus(bookingId: string, requestId: string, 
 }
 
 export interface PartnerDashboardData {
-  name: string;
   isOnline: boolean;
+  name: string;
   rating: number;
   totalJobs: number;
   isVerified: boolean;
+  verification_status?: 'incomplete' | 'pending' | 'verified' | 'rejected' | 'suspended';
+  rejection_reason?: string;
   todaysJobsCount: number;
   todaysEarnings: number;
   activeJobsCount: number;
@@ -604,7 +595,7 @@ export async function fetchPartnerDashboardData(): Promise<PartnerDashboardData 
   // Fetch Profile
   const { data: profile } = await supabase
     .from('partner_profiles')
-    .select('is_online, rating, total_jobs, is_verified, users(name)')
+    .select('is_online, rating, total_jobs, is_verified, verification_status, rejection_reason, users(name)')
     .eq('id', user.id)
     .single();
 
@@ -653,6 +644,8 @@ export async function fetchPartnerDashboardData(): Promise<PartnerDashboardData 
     rating: profile?.rating || 0,
     totalJobs: profile?.total_jobs || 0,
     isVerified: profile?.is_verified || false,
+    verification_status: profile?.verification_status || 'incomplete',
+    rejection_reason: profile?.rejection_reason,
     todaysJobsCount,
     todaysEarnings,
     activeJobsCount: activeJobs.length,
@@ -989,7 +982,7 @@ export async function fetchBookingCancellation(bookingId: string): Promise<Booki
     .select('*')
     .eq('booking_id', bookingId)
     .single();
-    
+
   if (error) {
     if (error.code === 'PGRST116') return null; // not found
     throw error;
@@ -1122,3 +1115,101 @@ export const subscribeToNotifications = (
 
 
 
+
+
+
+
+
+
+export type DocumentType = 'id_proof' | 'address_proof' | 'skill_certificate' | 'profile_photo' | 'other';
+export type DocumentVerificationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface TechnicianDocument {
+  id: string;
+  technician_id: string;
+  document_type: DocumentType;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+  verification_status: DocumentVerificationStatus;
+  rejection_reason?: string;
+  uploaded_at: string;
+}
+
+export async function fetchTechnicianDocuments(): Promise<TechnicianDocument[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('technician_documents')
+    .select('*')
+    .eq('technician_id', user.id)
+    .order('uploaded_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching documents:', error);
+    return [];
+  }
+  return data as TechnicianDocument[];
+}
+
+export async function uploadTechnicianDocument(
+  fileUri: string,
+  fileName: string,
+  mimeType: string,
+  docType: DocumentType
+): Promise<TechnicianDocument> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const fileExt = fileName.split('.').pop() || 'jpg';
+  const filePath = `${user.id}/${Date.now()}_${docType}.${fileExt}`;
+
+  // Read file as base64 or blob. Since this is React Native, we can use fetch blob
+    const response = await fetch(fileUri);
+  const arrayBuffer = await response.arrayBuffer();
+
+  // Upload to Storage
+  const { error: uploadError } = await supabase.storage
+    .from('kyc-documents')
+    .upload(filePath, arrayBuffer, {
+      contentType: mimeType,
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error('Upload error:', uploadError);
+    throw new Error('Failed to upload document file.');
+  }
+
+  // Record in database
+  const { data, error: dbError } = await supabase
+    .from('technician_documents')
+    .insert({
+      technician_id: user.id,
+      document_type: docType,
+      storage_path: filePath,
+      file_name: fileName,
+      mime_type: mimeType,
+      file_size: arrayBuffer.byteLength,
+      verification_status: 'pending'
+    })
+    .select()
+    .single();
+
+  if (dbError) {
+    console.error('DB Insert error:', dbError);
+    throw new Error('Failed to record document in database.');
+  }
+
+  return data as TechnicianDocument;
+}
+
+export async function submitProfileForVerification(): Promise<void> {
+  const { error } = await supabase.rpc('submit_for_verification');
+  if (error) {
+    console.error('Error submitting profile for verification:', error);
+    throw new Error(error.message || 'Failed to submit profile for verification.');
+  }
+}

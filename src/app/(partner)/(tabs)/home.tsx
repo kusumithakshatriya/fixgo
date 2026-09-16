@@ -31,6 +31,11 @@ export default function PartnerHomeScreen() {
   }, [loadData]);
 
   const handleToggleOnline = async (value: boolean) => {
+    if (data?.verification_status !== 'verified') {
+      Alert.alert('Verification Required', 'You must complete verification before going online.');
+      return;
+    }
+
     setIsOnline(value);
     try {
       await togglePartnerOnlineStatus(value);
@@ -48,47 +53,89 @@ export default function PartnerHomeScreen() {
     );
   }
 
-  const hasPendingJobs = (data?.activeJobsCount ?? 0) > 0;
+  const isVerified = data?.verification_status === 'verified';
+  const vStatus = data?.verification_status || 'incomplete';
 
   return (
     <View style={styles.page}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Header */}
+        <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <View style={styles.profileRow}>
               <View style={styles.avatar}>
-                <ThemedText style={styles.avatarText}>{data?.name?.charAt(0)?.toUpperCase() || 'T'}</ThemedText>
+                <ThemedText style={styles.avatarText}>{data?.name?.charAt(0) || 'T'}</ThemedText>
               </View>
               <View>
-                <ThemedText style={styles.greeting}>Hi, {data?.name || 'Partner'}</ThemedText>
+                <ThemedText style={styles.greeting}>Hi, {data?.name?.split(' ')[0] || 'Technician'}!</ThemedText>
                 <View style={styles.statusRow}>
-                  <View style={[styles.statusDot, { backgroundColor: isOnline ? FixGoColors.success : FixGoColors.textSecondary }]} />
-                  <ThemedText style={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</ThemedText>
+                  <View style={[styles.statusDot, { backgroundColor: isVerified ? (isOnline ? FixGoColors.success : FixGoColors.textSecondary) : FixGoColors.warning }]} />
+                  <ThemedText style={styles.statusText}>{isVerified ? (isOnline ? 'Online' : 'Offline') : 'Action Required'}</ThemedText>
                 </View>
               </View>
             </View>
             <View style={styles.headerActions}>
-              <Switch
-                value={isOnline}
-                onValueChange={handleToggleOnline}
-                trackColor={{ false: '#E4ECEC', true: '#B4E5D3' }}
-                thumbColor={isOnline ? FixGoColors.success : '#A1B1B3'}
-              />
-              <Pressable onPress={() => router.push('/(partner)/notifications' as any)} style={styles.notificationBtn}>
+              <Pressable style={styles.notificationBtn} onPress={() => router.push('/(partner)/notifications' as any)}>
                 <SymbolView name="bell.fill" size={20} tintColor={FixGoColors.primary} />
-                  {unreadCount > 0 && <View style={styles.badge}><ThemedText style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</ThemedText></View>}
-                </Pressable>
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <ThemedText style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</ThemedText>
+                  </View>
+                )}
+              </Pressable>
+              {isVerified && (
+                <Switch
+                  value={isOnline}
+                  onValueChange={handleToggleOnline}
+                  trackColor={{ false: '#E4ECEC', true: '#E8F5E9' }}
+                  thumbColor={isOnline ? FixGoColors.success : '#F3F7F7'}
+                />
+              )}
             </View>
           </View>
 
-          {/* Pending Jobs Area */}
-          {hasPendingJobs && data && (
+          {/* VERIFICATION GATE CARD */}
+          {!isVerified && (
+            <Pressable
+              style={[
+                styles.pendingCard,
+                { backgroundColor: vStatus === 'rejected' ? FixGoColors.error : vStatus === 'pending' ? FixGoColors.warning : FixGoColors.primary }
+              ]}
+              onPress={() => router.push('/(partner)/onboarding/account-setup' as any)}
+            >
+              <View style={styles.pendingHeader}>
+                <View style={styles.pendingBadge}>
+                  <SymbolView name="doc.text.fill" size={10} tintColor={FixGoColors.card} />
+                  <ThemedText style={styles.pendingBadgeText}>
+                    {vStatus === 'pending' ? 'UNDER REVIEW' : vStatus === 'rejected' ? 'ACTION NEEDED' : 'SETUP REQUIRED'}
+                  </ThemedText>
+                </View>
+              </View>
+              <ThemedText style={styles.pendingTitle}>
+                {vStatus === 'pending' ? 'Your verification is under review' :
+                 vStatus === 'rejected' ? 'Verification needs attention' :
+                 'Complete verification to start receiving jobs'}
+              </ThemedText>
+
+              {vStatus === 'rejected' && data?.rejection_reason && (
+                 <ThemedText style={{color: FixGoColors.card, opacity: 0.9, fontSize: 13, marginTop: 4}}>
+                   Reason: {data.rejection_reason}
+                 </ThemedText>
+              )}
+
+              <View style={styles.pendingAction}>
+                <ThemedText style={styles.pendingActionText}>{vStatus === 'pending' ? 'Check Status' : vStatus === 'rejected' ? 'Fix Issues' : 'Complete Setup'}</ThemedText>
+                <SymbolView name="arrow.right" size={14} tintColor={FixGoColors.card} />
+              </View>
+            </Pressable>
+          )}
+
+          {/* Pending Job Card (Only if verified) */}
+          {isVerified && data?.activeJobsCount !== undefined && data.activeJobsCount > 0 && (
             <Pressable style={styles.pendingCard} onPress={() => router.push('/(partner)/(tabs)/orders' as any)}>
               <View style={styles.pendingHeader}>
                 <View style={styles.pendingBadge}>
                   <SymbolView name="circle.fill" size={8} tintColor={FixGoColors.card} />
-                  <ThemedText style={styles.pendingBadgeText}>NEW REQUESTS</ThemedText>
+                  <ThemedText style={styles.pendingBadgeText}>ACTIVE JOBS</ThemedText>
                 </View>
               </View>
               <ThemedText style={styles.pendingTitle}>You have {data.activeJobsCount} active job{data.activeJobsCount > 1 ? 's' : ''}</ThemedText>
@@ -112,7 +159,7 @@ export default function PartnerHomeScreen() {
               <View style={styles.statIconWrap}>
                 <SymbolView name="indianrupeesign.circle.fill" size={20} tintColor={FixGoColors.primary} />
               </View>
-              <ThemedText style={styles.statValue}>â‚¹{data?.todaysEarnings || 0}</ThemedText>
+              <ThemedText style={styles.statValue}>₹{data?.todaysEarnings || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Today's Earnings</ThemedText>
             </View>
           </View>
@@ -124,7 +171,7 @@ export default function PartnerHomeScreen() {
               <SymbolView name="location.fill" size={16} tintColor={FixGoColors.primary} />
             </View>
             <View style={styles.radarCard}>
-              <View style={styles.radarMap}>
+              <View style={[styles.radarMap, !isVerified && { opacity: 0.5 }]}>
                 {/* Visual placeholder for map */}
                 <View style={styles.radarCircle1}>
                   <View style={styles.radarCircle2}>
@@ -136,15 +183,19 @@ export default function PartnerHomeScreen() {
                   </View>
                 </View>
                 <View style={styles.radarOverlay}>
-                  <ThemedText style={styles.radarOverlayText}>Service Area Active</ThemedText>
+                  <ThemedText style={[styles.radarOverlayText, !isVerified && { color: FixGoColors.textSecondary }]}>
+                    {isVerified ? 'Service Area Active' : 'Radar Offline'}
+                  </ThemedText>
                 </View>
               </View>
               <View style={styles.radarFooter}>
-                <ThemedText style={styles.radarFooterText}>Waiting for nearby requests...</ThemedText>
+                <ThemedText style={styles.radarFooterText}>
+                  {isVerified ? (isOnline ? 'Waiting for nearby requests...' : 'You are currently offline') : 'Complete verification to activate radar'}
+                </ThemedText>
               </View>
             </View>
           </View>
-          
+
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -156,7 +207,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, width: '100%', alignSelf: 'center', maxWidth: MaxContentWidth },
   content: { padding: Spacing.four, paddingBottom: 100, gap: 24 },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
+
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: FixGoColors.primary, justifyContent: 'center', alignItems: 'center' },
@@ -198,4 +249,3 @@ const styles = StyleSheet.create({
   radarFooter: { padding: Spacing.three, borderTopWidth: 1, borderColor: FixGoColors.border, backgroundColor: '#FAFAFA' },
   radarFooterText: { color: FixGoColors.textSecondary, fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });
-
