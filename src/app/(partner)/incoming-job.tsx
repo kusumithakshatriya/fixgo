@@ -6,45 +6,83 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { fetchPartnerJobs, updateBookingStatus, PartnerJob, cancelBooking } from '@/services/supabase';
+import { fetchPartnerBookingById, processTechnicianOffer, PartnerJob } from '@/services/supabase';
 
 export default function IncomingJobScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [job, setJob] = useState<PartnerJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const loadJobDetails = async () => {
       try {
-        // Fetching all and finding is inefficient for large lists, but works for MVP
-        // Ideally we'd have a fetchJobById
-        const jobs = await fetchPartnerJobs();
-        const found = jobs.find(j => j.id === id);
-        if (found) setJob(found);
-        else Alert.alert('Error', 'Job not found');
+        if (!id) return;
+        const found = await fetchPartnerBookingById(id);
+        if (found) {
+          setJob(found);
+          
+          if (found.offerExpiresAt) {
+            const expiry = new Date(found.offerExpiresAt).getTime();
+            const now = new Date().getTime();
+            const remaining = Math.max(0, Math.floor((expiry - now) / 1000));
+            setTimeLeft(remaining);
+            
+            if (remaining === 0 && found.status === 'Technician Assigned') {
+              handleAction('expire');
+            }
+          } else {
+            // Fallback 60s if no DB expiry
+            setTimeLeft(60);
+          }
+        } else {
+          Alert.alert('Error', 'Job not found');
+          router.back();
+        }
       } catch (e) {
         Alert.alert('Error', 'Failed to load job details');
       } finally {
         setIsLoading(false);
       }
     };
-    if (id) loadJobDetails();
+    loadJobDetails();
   }, [id]);
 
-  const handleAction = async (action: 'Accepted' | 'Rejected') => {
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0 || isProcessing) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleAction('expire');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, isProcessing]);
+
+  const handleAction = async (action: 'accept' | 'reject' | 'expire') => {
     if (!job) return;
     setIsProcessing(true);
     try {
-      if (action === 'Accepted') {
-        await updateBookingStatus(job.id, job.request.id, 'Accepted');
+      await processTechnicianOffer(job.id, action);
+      if (action === 'accept') {
         router.replace({ pathname: '/(partner)/active-job' as any, params: { id: job.id } });
       } else {
-        await updateBookingStatus(job.id, job.request.id, 'Rejected');
         router.back();
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Could not update status');
+      if (action !== 'expire') {
+        Alert.alert('Error', e.message || 'Could not update status');
+      } else {
+        router.back(); // quietly close on expire
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -74,7 +112,10 @@ export default function IncomingJobScreen() {
           <Pressable onPress={() => router.back()} style={styles.iconButton}>
             <SymbolView name="chevron.left" size={18} tintColor={FixGoColors.primary} />
           </Pressable>
-          <ThemedText style={styles.headerTitle}>Incoming Job</ThemedText>
+          <View style={styles.timerContainer}>
+            <SymbolView name="clock.fill" size={14} tintColor={FixGoColors.warning} />
+            <ThemedText style={styles.timerText}>{timeLeft !== null ? `00:${timeLeft.toString().padStart(2, '0')}` : '00:00'}</ThemedText>
+          </View>
           <View style={styles.iconButton} />
         </View>
 
@@ -93,7 +134,7 @@ export default function IncomingJobScreen() {
                 <ThemedText style={styles.serviceName}>{job.request.service}</ThemedText>
                 <ThemedText style={styles.serviceSub}>Home Service</ThemedText>
               </View>
-              <ThemedText style={styles.priceEst}>Est. ₹299</ThemedText>
+              <ThemedText style={styles.priceEst}>Est. Rs.1299</ThemedText>
             </View>
 
             <View style={styles.divider} />
@@ -125,14 +166,14 @@ export default function IncomingJobScreen() {
         <View style={styles.footer}>
           <Pressable 
             style={[styles.rejectBtn, isProcessing && { opacity: 0.5 }]} 
-            onPress={() => handleAction('Rejected')}
+            onPress={() => handleAction('reject')}
             disabled={isProcessing}
           >
             <ThemedText style={styles.rejectText}>Decline</ThemedText>
           </Pressable>
           <Pressable 
             style={[styles.acceptBtn, isProcessing && { opacity: 0.5 }]} 
-            onPress={() => handleAction('Accepted')}
+            onPress={() => handleAction('accept')}
             disabled={isProcessing}
           >
             {isProcessing ? <ActivityIndicator size="small" color={FixGoColors.card} /> : <ThemedText style={styles.acceptText}>Accept Job</ThemedText>}
@@ -150,7 +191,8 @@ const styles = StyleSheet.create({
   
   header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.four },
   iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center', backgroundColor: FixGoColors.card, borderRadius: 20 },
-  headerTitle: { color: FixGoColors.text, fontSize: 18, fontWeight: '900' },
+  timerContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF5E5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.pill },
+  timerText: { color: FixGoColors.warning, fontSize: 16, fontWeight: '900', fontVariant: ['tabular-nums'] },
   
   content: { padding: Spacing.four, gap: 16 },
   

@@ -1,4 +1,4 @@
-﻿import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { calculateDistanceKm } from '@/lib/location';
 
 export type ServiceEntity = {
@@ -469,6 +469,7 @@ export interface PartnerJob {
   id: string;
   status: string;
   createdAt: string;
+  offerExpiresAt?: string;
   payment?: any;
   request: {
     id: string;
@@ -480,6 +481,64 @@ export interface PartnerJob {
   customer: {
     id: string;
     name: string;
+  };
+}
+
+export async function processTechnicianOffer(bookingId: string, action: 'accept' | 'reject' | 'expire'): Promise<{success: boolean, new_status: string}> {
+  const { data, error } = await supabase.rpc('process_technician_offer', {
+    p_booking_id: bookingId,
+    p_action: action
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchPartnerBookingById(bookingId: string): Promise<PartnerJob | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      id,
+      service_request_id,
+      customer_id,
+      technician_id,
+      status,
+      created_at,
+      offer_expires_at,
+      service_requests (
+        id,
+        description,
+        preferred_date,
+        preferred_time,
+        services ( name )
+      ),
+      users!bookings_customer_id_fkey ( name )
+    `)
+    .eq('id', bookingId)
+    .eq('technician_id', user.id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const sr: any = data.service_requests;
+  return {
+    id: data.id,
+    status: data.status,
+    createdAt: data.created_at,
+    offerExpiresAt: data.offer_expires_at,
+    request: {
+      id: sr.id,
+      service: Array.isArray(sr.services) ? sr.services[0]?.name : sr.services?.name || 'Unknown',
+      description: sr.description,
+      preferredDate: sr.preferred_date,
+      preferredTime: sr.preferred_time,
+    },
+    customer: {
+      id: data.customer_id,
+      name: (data.users as any)?.name || 'Customer'
+    }
   };
 }
 
@@ -496,6 +555,7 @@ export async function fetchPartnerJobs(): Promise<PartnerJob[]> {
       technician_id,
       status,
       created_at,
+      offer_expires_at,
       service_requests (
         id,
         description,
@@ -524,6 +584,7 @@ export async function fetchPartnerJobs(): Promise<PartnerJob[]> {
       id: b.id,
       status: b.status,
       createdAt: b.created_at,
+      offerExpiresAt: b.offer_expires_at,
       payment: paymentData || null,
       request: {
         id: b.service_request_id,
