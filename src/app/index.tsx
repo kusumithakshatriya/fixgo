@@ -13,7 +13,9 @@ export default function SplashScreen() {
     if (isLoading) return;
     const timer = setTimeout(() => {
       if (user) {
-        if (user.role === 'partner') {
+        if (user.role === 'admin') {
+          router.replace('/(admin)/dashboard' as any);
+        } else if (user.role === 'partner') {
           router.replace('/(partner)/(tabs)/home' as any);
         } else {
           router.replace('/(customer)/customer-home');

@@ -1213,3 +1213,75 @@ export async function submitProfileForVerification(): Promise<void> {
     throw new Error(error.message || 'Failed to submit profile for verification.');
   }
 }
+
+// --- ADMIN API ENDPOINTS ---
+
+export async function fetchAllTechnicians(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('partner_profiles')
+    .select('*, users(name, phone, email)')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchTechnicianVerificationDetail(technicianId: string): Promise<any> {
+  const { data, error } = await supabase
+    .from('partner_profiles')
+    .select('*, users(name, phone, email)')
+    .eq('id', technicianId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchAdminTechnicianDocuments(technicianId: string): Promise<TechnicianDocument[]> {
+  const { data, error } = await supabase
+    .from('technician_documents')
+    .select('*')
+    .eq('technician_id', technicianId)
+    .order('uploaded_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createTechnicianDocumentSignedUrl(storagePath: string): Promise<string> {
+  const { data, error } = await supabase
+    .storage
+    .from('kyc-documents')
+    .createSignedUrl(storagePath, 300); // 5 minutes expiry
+
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function adminProcessDocumentVerification(
+  documentId: string,
+  decision: 'approved' | 'rejected',
+  rejectionReason?: string
+): Promise<void> {
+  const { error } = await supabase.rpc('process_document_verification', {
+    p_document_id: documentId,
+    p_decision: decision,
+    p_rejection_reason: rejectionReason || null,
+  });
+
+  if (error) throw error;
+}
+
+export async function adminProcessTechnicianVerification(
+  technicianId: string,
+  decision: 'approved' | 'rejected',
+  rejectionReason?: string
+): Promise<void> {
+  const { error } = await supabase.rpc('process_technician_verification', {
+    p_technician_id: technicianId,
+    p_decision: decision,
+    p_rejection_reason: rejectionReason || null,
+  });
+
+  if (error) throw error;
+}
