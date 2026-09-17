@@ -814,29 +814,19 @@ export interface AdditionalChargeRequest {
 
 export async function createAdditionalChargeRequest(
   bookingId: string,
-  customerId: string,
+  customerId: string, // Kept for interface compatibility, but unused by RPC since backend fetches it
   amount: number,
   reason: string
 ): Promise<AdditionalChargeRequest> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { data, error } = await supabase
-    .from('additional_charge_requests')
-    .insert({
-      booking_id: bookingId,
-      technician_id: user.id,
-      customer_id: customerId,
-      amount,
-      reason,
-      status: 'pending'
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('request_additional_charge', {
+    p_booking_id: bookingId,
+    p_amount: amount,
+    p_reason: reason
+  });
 
   if (error) {
     console.error('Error creating additional charge request:', error);
-    throw new Error('Unable to send additional charge request. Please try again.');
+    throw new Error(error.message || 'Unable to send additional charge request. Please try again.');
   }
 
   return data as AdditionalChargeRequest;
@@ -858,14 +848,14 @@ export async function fetchBookingAdditionalCharges(bookingId: string): Promise<
 }
 
 export async function updateAdditionalChargeStatus(requestId: string, status: AdditionalChargeStatus): Promise<void> {
-  const { error } = await supabase
-    .from('additional_charge_requests')
-    .update({ status })
-    .eq('id', requestId);
+  const { error } = await supabase.rpc('respond_to_additional_charge', {
+    p_charge_id: requestId,
+    p_action: status
+  });
 
   if (error) {
     console.error('Error updating additional charge status:', error);
-    throw new Error('Could not update request status.');
+    throw new Error(error.message || 'Could not update request status.');
   }
 }
 
