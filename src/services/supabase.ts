@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+﻿import { supabase } from '@/lib/supabase';
 import { calculateDistanceKm } from '@/lib/location';
 
 export type ServiceEntity = {
@@ -318,12 +318,7 @@ export async function fetchPartnerServiceArea(partnerId: string): Promise<Partne
   return data as PartnerServiceArea | null;
 }
 
-export async function upsertPartnerServiceArea(
-  partnerId: string,
-  areaName: string,
-  latitude: number,
-  longitude: number
-): Promise<PartnerServiceArea> {
+export async function upsertPartnerServiceArea(partnerId: string, areaName: string, latitude: number | null, longitude: number | null): Promise<PartnerServiceArea> {
   const existing = await fetchPartnerServiceArea(partnerId);
 
   let response;
@@ -1284,4 +1279,34 @@ export async function adminProcessTechnicianVerification(
   });
 
   if (error) throw error;
+}
+
+
+export async function updateTechnicianProfile(
+  name: string,
+  phone: string,
+  bio: string,
+  experienceYears: number,
+  serviceRadiusKm: number,
+  areaName: string,
+  latitude: number | null,
+  longitude: number | null,
+  serviceIds: number[]
+) {
+  const { error } = await supabase.rpc('update_technician_profile', {
+    p_name: name,
+    p_phone: phone,
+    p_bio: bio,
+    p_experience_years: experienceYears,
+    p_service_radius_km: serviceRadiusKm,
+    p_area_name: areaName,
+    p_latitude: latitude,
+    p_longitude: longitude,
+    p_service_ids: serviceIds
+  });
+
+  if (error) {
+    console.error('[updateTechnicianProfile] Error:', error.message);
+    throw error;
+  }
 }

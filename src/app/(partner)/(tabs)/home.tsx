@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Switch, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
@@ -30,18 +30,26 @@ export default function PartnerHomeScreen() {
     loadData();
   }, [loadData]);
 
+  const [isToggling, setIsToggling] = useState(false);
+
   const handleToggleOnline = async (value: boolean) => {
+    if (isToggling) return;
     if (data?.verification_status !== 'verified') {
       Alert.alert('Verification Required', 'You must complete verification before going online.');
       return;
     }
 
+    setIsToggling(true);
+    // Optimistic update
     setIsOnline(value);
     try {
       await togglePartnerOnlineStatus(value);
     } catch (e) {
+      // Revert on failure
       setIsOnline(!value);
-      Alert.alert('Error', 'Failed to update online status');
+      Alert.alert('Error', 'Failed to update online status. Please check your connection.');
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -88,6 +96,7 @@ export default function PartnerHomeScreen() {
                   onValueChange={handleToggleOnline}
                   trackColor={{ false: '#E4ECEC', true: '#E8F5E9' }}
                   thumbColor={isOnline ? FixGoColors.success : '#F3F7F7'}
+                disabled={isToggling}
                 />
               )}
             </View>
@@ -159,7 +168,7 @@ export default function PartnerHomeScreen() {
               <View style={styles.statIconWrap}>
                 <SymbolView name="indianrupeesign.circle.fill" size={20} tintColor={FixGoColors.primary} />
               </View>
-              <ThemedText style={styles.statValue}>₹{data?.todaysEarnings || 0}</ThemedText>
+              <ThemedText style={styles.statValue}>â‚¹{data?.todaysEarnings || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Today's Earnings</ThemedText>
             </View>
           </View>
@@ -249,3 +258,5 @@ const styles = StyleSheet.create({
   radarFooter: { padding: Spacing.three, borderTopWidth: 1, borderColor: FixGoColors.border, backgroundColor: '#FAFAFA' },
   radarFooterText: { color: FixGoColors.textSecondary, fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });
+
+
