@@ -378,24 +378,30 @@ export async function createBooking(
     throw new Error('A booking already exists for this repair request.');
   }
 
-  // Create new booking
-  const { data, error } = await supabase
-    .from('bookings')
-    .insert({
-      service_request_id: serviceRequestId,
-      customer_id: user.id,
-      technician_id: technicianId,
-      status: 'Technician Assigned' // current project convention
-    })
-    .select()
-    .single();
+  // Create booking via atomic RPC
+  const { data, error } = await supabase.rpc('create_booking_with_offer', {
+    p_service_request_id: serviceRequestId,
+    p_technician_id: technicianId
+  });
 
   if (error) {
     console.error('Create booking error:', error);
     throw new Error('Failed to confirm booking. Please try again later.');
   }
 
-  return data as BookingEntity;
+  // Fetch the created booking entity
+  const { data: bData, error: bError } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('id', data.booking_id)
+    .single();
+
+  if (bError) {
+    console.error('Fetch created booking error:', bError);
+    throw new Error('Failed to confirm booking. Please try again later.');
+  }
+
+  return bData as BookingEntity;
 }
 
 export async function fetchCustomerBookings() {

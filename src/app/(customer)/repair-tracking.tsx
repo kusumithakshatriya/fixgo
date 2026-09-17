@@ -1,4 +1,4 @@
-﻿import { type ComponentProps, useState, useEffect } from 'react';
+import { type ComponentProps, useState, useEffect } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View, ActivityIndicator, Modal, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ import {
   BookingCancellation
 } from '@/services/supabase';
 import { calculateDistanceKm } from '@/lib/location';
+import { supabase } from '@/lib/supabase';
 
 function ThemedText({ style, ...props }: ComponentProps<typeof BaseThemedText>) {
   return <BaseThemedText {...props} style={[styles.sans, style]} />;
@@ -84,6 +85,9 @@ export default function RepairTrackingScreen() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelDescription, setCancelDescription] = useState('');
 
+  const [techDetails, setTechDetails] = useState<{name: string, rating: number, jobs: number} | null>(null);
+  const [currentTechId, setCurrentTechId] = useState<string | undefined>(technicianId);
+
   useEffect(() => {
     (async () => {
       try {
@@ -97,6 +101,28 @@ export default function RepairTrackingScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!currentTechId) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('partner_profiles')
+          .select('rating, total_jobs, users(name)')
+          .eq('id', currentTechId)
+          .single();
+        if (!error && data) {
+          setTechDetails({
+            name: (data.users as any)?.name || 'Technician',
+            rating: data.rating || 5.0,
+            jobs: data.total_jobs || 0
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load tech details:', err);
+      }
+    })();
+  }, [currentTechId]);
 
   const loadCharges = async (id: string) => {
     const fetched = await fetchBookingAdditionalCharges(id);
@@ -123,6 +149,9 @@ export default function RepairTrackingScreen() {
     const unsubscribeBooking = subscribeToBookingUpdates(bookingId, (payload) => {
       if (payload.new && payload.new.status) {
         setBookingStatus(payload.new.status);
+        if (payload.new.technician_id && payload.new.technician_id !== currentTechId) {
+          setCurrentTechId(payload.new.technician_id);
+        }
         if (payload.new.status === 'Awaiting Payment' || payload.new.status === 'Completed') {
           loadPayment(bookingId);
         }
@@ -266,12 +295,12 @@ export default function RepairTrackingScreen() {
   const displayLocation = request?.location ?? (location === 'Gxjvcickkkc' || location === 'Customer repair address' ? 'Service location' : location);
   const displayDescription = request?.description ?? description ?? `Your ${displayService.toLowerCase()} repair request`;
   
-  const technicianName = booking?.technician?.name || name;
+  const technicianName = techDetails?.name || booking?.technician?.name || name;
   const displayArrival = arrival;
   const displayPrice = price;
   
-  const rating = booking?.technician?.rating || 5.0;
-  const jobs = booking?.technician?.jobs || 0;
+  const rating = techDetails?.rating || booking?.technician?.rating || 5.0;
+  const jobs = techDetails?.jobs || booking?.technician?.jobs || 0;
   
   const initials = technicianName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'TX';
   const showPlaceholder = (action: 'Call' | 'Chat') => Alert.alert(`${action} ${technicianName}`, `${action} options will be connected in a future FixGo update.`);
@@ -379,8 +408,12 @@ export default function RepairTrackingScreen() {
       </View>
       )}
 
-      <SectionTitle icon="person.fill" title="Your technician" />
-      <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techInfo}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.metrics}><Metric icon="star.fill" value={`${rating}`} label="rating" accent /><Metric icon="briefcase.fill" value={`${jobs} jobs`} label="completed" /><Metric icon="clock.fill" value={`${displayArrival}`} label="ETA" /></View><View style={styles.techActions}><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Call')} style={styles.secondaryButton}><SymbolView name="phone.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Call</ThemedText></Pressable><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Chat')} style={styles.secondaryButton}><SymbolView name="message.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Chat</ThemedText></Pressable></View></View>
+      {bStatus !== 'Cancelled' && (
+        <>
+          <SectionTitle icon="person.fill" title="Your technician" />
+          <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techInfo}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.metrics}><Metric icon="star.fill" value={`${rating}`} label="rating" accent /><Metric icon="briefcase.fill" value={`${jobs} jobs`} label="completed" /><Metric icon="clock.fill" value={`${displayArrival}`} label="ETA" /></View><View style={styles.techActions}><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Call')} style={styles.secondaryButton}><SymbolView name="phone.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Call</ThemedText></Pressable><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Chat')} style={styles.secondaryButton}><SymbolView name="message.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Chat</ThemedText></Pressable></View></View>
+        </>
+      )}
 
       {charges.length > 0 && bookingStatus !== 'Awaiting Payment' && (
         <View style={{ gap: 12, marginTop: 8 }}>
