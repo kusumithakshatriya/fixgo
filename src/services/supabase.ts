@@ -611,27 +611,19 @@ export async function updateBookingStatus(bookingId: string, requestId: string, 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Authentication required");
 
-  // 1. Update Booking
-  const { error: bookingError } = await supabase
-    .from('bookings')
-    .update({ status: newStatus })
-    .eq('id', bookingId)
-    .eq('technician_id', user.id);
+  // Use the secure server-side RPC for lifecycle transitions
+  const { data, error } = await supabase.rpc('update_job_status', {
+    p_booking_id: bookingId,
+    p_new_status: newStatus
+  });
 
-  if (bookingError) {
-    console.error('Update booking error:', bookingError);
-    throw new Error('Failed to update booking status.');
+  if (error) {
+    console.error('Update booking error:', error);
+    throw new Error(error.message || 'Failed to update booking status.');
   }
 
-  // 2. Update Service Request
-  const { error: requestError } = await supabase
-    .from('service_requests')
-    .update({ status: newStatus })
-    .eq('id', requestId);
-
-  if (requestError) {
-    console.error('Update service request error:', requestError);
-    // Ignore error so the UI still succeeds for the booking side
+  if (!data?.success) {
+    throw new Error('Failed to update booking status.');
   }
 
   return true;
