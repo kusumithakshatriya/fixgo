@@ -3,6 +3,7 @@ import { View, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -37,16 +38,17 @@ export default function PartnerOtpScreen() {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otp = code.join('');
     if (otp.length < 6) {
       Alert.alert('Incomplete', 'Please enter the 6-digit OTP.');
       return;
     }
     
-    // As instructed, we route to Account Setup to continue onboarding
-    // In a real flow, this would exchange the code for a session
-    router.replace('/(partner)/onboarding/account-setup' as any);
+    // For the demo flow, we bypass KYC/Basic Information onboarding
+    // and route directly to the Partner Home screen.
+    await SecureStore.setItemAsync('partner_demo_logged_in', 'true');
+    router.replace('/(partner)/(tabs)/home' as any);
   };
 
   return (

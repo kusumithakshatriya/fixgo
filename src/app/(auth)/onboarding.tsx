@@ -33,7 +33,12 @@ export default function OnboardingScreen() {
         phone: phone.trim(),
         location: location.trim(),
       });
-      router.replace('/(customer)/customer-home');
+      const appVariant = process.env.EXPO_PUBLIC_APP_VARIANT || 'customer';
+      if (appVariant === 'partner') {
+        router.replace('/(partner)/(tabs)/home' as any);
+      } else {
+        router.replace('/(customer)/customer-home');
+      }
     } catch (e) {
       setError('Something went wrong. Please try again.');
     } finally {

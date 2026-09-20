@@ -124,8 +124,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string) => {
+    const appVariant = process.env.EXPO_PUBLIC_APP_VARIANT || 'customer';
+    const scheme = appVariant === 'partner' ? 'fixgopartner' : 'fixgo';
+    
     // Generate a robust deep link URL with a path to prevent Android intent failures.
-    const redirectTo = Linking.createURL('/(auth)/otp-verification');
+    const redirectTo = Linking.createURL('/(auth)/otp-verification', { scheme });
+    
     const { error } = await supabase.auth.signInWithOtp({ 
       email,
       options: {

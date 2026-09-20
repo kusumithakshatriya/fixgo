@@ -6,29 +6,27 @@ import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function PartnerLoginScreen() {
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
 
   const handleSendOtp = async () => {
     if (phone.length < 10) {
       Alert.alert('Invalid', 'Please enter a valid 10-digit mobile number.');
       return;
     }
+
     setIsLoading(true);
+
     try {
-      // NOTE: Connecting to existing email auth as per instructions.
-      // Since phone auth requires Supabase SMS setup, we simulate or use a dummy email mapping
-      // or simply alert that they should use the customer email flow for now if real auth is needed.
-      // For this UI, we just proceed to the next step.
-      const dummyEmail = `partner_${phone}@fixgo.com`;
-      await login(dummyEmail).catch(e => {
-        console.log('Magic link failed (expected if dummy email): ', e);
+      // Demo Partner authentication:
+      // Do not call Supabase email OTP.
+      // The Partner app uses the simulated 6-digit OTP flow.
+      router.push({
+        pathname: '/(partner)/auth/otp' as any,
+        params: { phone },
       });
-      router.push({ pathname: '/(partner)/auth/otp' as any, params: { phone } });
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +82,7 @@ export default function PartnerLoginScreen() {
             disabled={phone.length < 10 || isLoading}
           >
             <ThemedText style={styles.primaryBtnText}>
-              {isLoading ? 'Sending...' : 'Send OTP'}
+              {isLoading ? 'Continuing...' : 'Continue'}
             </ThemedText>
           </Pressable>
         </View>

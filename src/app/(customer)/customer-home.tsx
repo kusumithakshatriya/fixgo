@@ -15,28 +15,29 @@ import { useAuth } from '@/hooks/useAuth';
 
 import { useEffect, useState, useCallback } from 'react';
 import { ActivityIndicator } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchActiveServices, fetchCustomerBookings, subscribeToBookingUpdates, fetchUnreadNotificationCount, subscribeToNotifications, type ServiceEntity } from '@/services/supabase';
 
-type Service = { label: string; requestService: string; icon: SymbolViewProps['name']; isMVP?: boolean };
+type Service = { label: string; requestService: string; icon: SymbolViewProps['name']; materialIcon?: any; isMVP?: boolean };
 
-const categoryMap: Record<string, { icon: SymbolViewProps['name']; isMVP: boolean; label?: string }> = {
-  'AC Repair': { icon: 'snow', isMVP: true },
-  'Electrical': { icon: 'bolt.fill', isMVP: true },
-  'Plumbing': { icon: 'drop.fill', isMVP: true },
-  'Washing Machine': { icon: 'washer.fill', isMVP: false },
-  'Refrigerator': { icon: 'refrigerator.fill', isMVP: false },
-  'RO / Water Purifier': { label: 'RO / Purifier', icon: 'drop.circle.fill', isMVP: false },
-  'Geyser': { icon: 'flame.fill', isMVP: false },
-  'Fan': { icon: 'wind', isMVP: false },
-  'Inverter': { icon: 'battery.100', isMVP: false },
-  'Microwave': { icon: 'microwave.fill', isMVP: false },
+const categoryMap: Record<string, { icon: SymbolViewProps['name']; materialIcon: any; isMVP: boolean; label?: string }> = {
+  'AC Repair': { icon: 'snow', materialIcon: 'air-conditioner', isMVP: true },
+  'Electrical': { icon: 'bolt.fill', materialIcon: 'lightning-bolt', isMVP: true },
+  'Plumbing': { icon: 'drop.fill', materialIcon: 'water', isMVP: true },
+  'Washing Machine': { icon: 'washer.fill', materialIcon: 'washing-machine', isMVP: false },
+  'Refrigerator': { icon: 'refrigerator.fill', materialIcon: 'fridge', isMVP: false },
+  'RO / Water Purifier': { label: 'RO / Purifier', icon: 'drop.circle.fill', materialIcon: 'water-pump', isMVP: false },
+  'Geyser': { icon: 'flame.fill', materialIcon: 'fire', isMVP: false },
+  'Fan': { icon: 'wind', materialIcon: 'fan', isMVP: false },
+  'Inverter': { icon: 'battery.100', materialIcon: 'battery-charging-100', isMVP: false },
+  'Microwave': { icon: 'microwave.fill', materialIcon: 'microwave', isMVP: false },
 };
 
 const popularServices: Service[] = [
-  { label: 'Electrician', requestService: 'Electrical', icon: 'bolt.fill' },
-  { label: 'Plumber', requestService: 'Plumbing', icon: 'drop.fill' },
-  { label: 'Plumber + AC', requestService: 'Other', icon: 'wrench.and.screwdriver.fill' },
-  { label: 'Electrician + AC', requestService: 'Other', icon: 'bolt.circle.fill' },
+  { label: 'Electrician', requestService: 'Electrical', icon: 'bolt.fill', materialIcon: 'lightning-bolt' },
+  { label: 'Plumber', requestService: 'Plumbing', icon: 'drop.fill', materialIcon: 'water' },
+  { label: 'Plumber + AC', requestService: 'Other', icon: 'wrench.and.screwdriver.fill', materialIcon: 'tools' },
+  { label: 'Electrician + AC', requestService: 'Other', icon: 'bolt.circle.fill', materialIcon: 'lightning-bolt-circle' },
 ];
 
 export default function CustomerHomeScreen() {
@@ -137,12 +138,12 @@ export default function CustomerHomeScreen() {
               <View style={styles.locationCopy}>
                 <ThemedText style={styles.greeting}>Hi, {customerName}</ThemedText>
                 <View style={styles.locationLine}>
-                  <SymbolView name="location.fill" size={13} tintColor={FixGoColors.success} />
+                  <SymbolView name="location.fill" size={13} tintColor={FixGoColors.success} fallback={<MaterialCommunityIcons name="map-marker" size={13} color={FixGoColors.success} />} />
                   <ThemedText style={styles.location} numberOfLines={1}>{locationText}</ThemedText>
                 </View>
               </View>
               <Pressable onPress={() => router.push('/(customer)/notifications' as any)} style={styles.notification}>
-                <SymbolView name="bell" size={21} tintColor={FixGoColors.primary} />
+                <SymbolView name="bell" size={21} tintColor={FixGoColors.primary} fallback={<MaterialCommunityIcons name="bell" size={21} color={FixGoColors.primary} />} />
                 {unreadCount > 0 && <View style={styles.badge}><ThemedText style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</ThemedText></View>}
               </Pressable>
             </View>
@@ -208,6 +209,7 @@ export default function CustomerHomeScreen() {
                   key={service.label} 
                   label={service.label} 
                   icon={service.icon} 
+                  materialIcon={service.materialIcon}
                   isMVP={service.isMVP}
                   onPress={() => requestService(service)} 
                 />
@@ -223,6 +225,7 @@ export default function CustomerHomeScreen() {
                 key={service.label} 
                 label={service.label} 
                 icon={service.icon} 
+                materialIcon={service.materialIcon}
                 onPress={() => requestService(service)} 
               />
             ))}
@@ -231,9 +234,9 @@ export default function CustomerHomeScreen() {
           {/* Recent Bookings */}
           <SectionHeader title="Recent Bookings" action="View all" onActionPress={() => router.push('/(customer)/bookings')} />
           <View style={styles.recentBookingCard}>
-            <View style={styles.recentBookingIcon}>
-              <SymbolView name="bolt.fill" size={20} tintColor={FixGoColors.textSecondary} />
-            </View>
+              <View style={styles.recentBookingIcon}>
+                <SymbolView name="bolt.fill" size={20} tintColor={FixGoColors.textSecondary} fallback={<MaterialCommunityIcons name="lightning-bolt" size={22} color={FixGoColors.textSecondary} />} />
+              </View>
             <View style={styles.recentBookingDetails}>
               <ThemedText style={styles.recentBookingTitle}>Electrical Repair</ThemedText>
               <ThemedText style={styles.recentBookingDate}>12 Aug 2026 â€¢ Completed</ThemedText>

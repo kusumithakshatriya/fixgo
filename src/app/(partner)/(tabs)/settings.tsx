@@ -7,13 +7,19 @@ import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 
+import * as SecureStore from 'expo-secure-store';
+
 export default function PartnerSettingsScreen() {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await logout();
-      router.replace('/(auth)/otp'); // Route to default auth entry
+      if (user) {
+        await logout();
+      }
+      // Clear demo login state
+      await SecureStore.deleteItemAsync('partner_demo_logged_in');
+      router.replace('/(partner)/auth/login' as any);
     } catch (e) {
       Alert.alert('Error', 'Failed to log out.');
     }

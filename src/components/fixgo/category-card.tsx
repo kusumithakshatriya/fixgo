@@ -1,16 +1,19 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FixGoColors, Radius } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
 
 type CategoryCardProps = { 
   label: string; 
   icon: SymbolViewProps['name']; 
+  materialIcon?: any;
   isMVP?: boolean;
   onPress: () => void;
 };
 
-export function CategoryCard({ label, icon, isMVP, onPress }: CategoryCardProps) { 
+export function CategoryCard({ label, icon, materialIcon, isMVP, onPress }: CategoryCardProps) { 
+  const color = isMVP ? FixGoColors.card : FixGoColors.primary;
   return (
     <Pressable 
       accessibilityRole="button" 
@@ -19,7 +22,12 @@ export function CategoryCard({ label, icon, isMVP, onPress }: CategoryCardProps)
       style={({ pressed }) => [styles.card, pressed && styles.pressed, isMVP && styles.mvpCard]}
     >
       <View style={[styles.iconContainer, isMVP && styles.mvpIconContainer]}>
-        <SymbolView name={icon} size={22} tintColor={isMVP ? FixGoColors.card : FixGoColors.primary} />
+        <SymbolView 
+          name={icon} 
+          size={22} 
+          tintColor={color} 
+          fallback={<MaterialCommunityIcons name={materialIcon || 'tools'} size={24} color={color} />}
+        />
       </View>
       <ThemedText style={[styles.label, isMVP && styles.mvpLabel]} numberOfLines={2} adjustsFontSizeToFit>
         {label}

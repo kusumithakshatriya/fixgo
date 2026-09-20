@@ -1,0 +1,22 @@
+{
+  "build": {
+    "preview-customer": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "customer",
+        "EXPO_PUBLIC_APP_VARIANT": "customer"
+      }
+    },
+    "preview-partner": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "partner",
+        "EXPO_PUBLIC_APP_VARIANT": "partner"
+      }
+    }
+  }
+}
