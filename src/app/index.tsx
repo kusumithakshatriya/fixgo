@@ -1,98 +1,57 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FixGoColors } from '@/constants/theme';
+import { useAuth } from '@/hooks/useAuth';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function SplashScreen() {
+  const { user, isLoading } = useAuth();
+  
+  useEffect(() => { 
+    if (isLoading) return;
+    const timer = setTimeout(() => {
+      if (user) {
+        const appVariant = process.env.EXPO_PUBLIC_APP_VARIANT || 'customer';
+        
+        if (user.role === 'admin') {
+          router.replace('/(admin)/dashboard' as any);
+        } else if (appVariant === 'partner') {
+          if (user.role === 'partner') {
+            router.replace('/(partner)/(tabs)/home' as any);
+          } else {
+            router.replace('/(partner)/auth/login' as any);
+          }
+        } else {
+          if (user.role === 'partner') {
+            router.replace('/(auth)/otp');
+          } else {
+            router.replace('/(customer)/customer-home');
+          }
+        }
+      } else {
+        const appVariant = process.env.EXPO_PUBLIC_APP_VARIANT || 'customer';
+        if (appVariant === 'partner') {
+          import('expo-secure-store').then(SecureStore => {
+            SecureStore.getItemAsync('partner_demo_logged_in').then(val => {
+              if (val === 'true') {
+                router.replace('/(partner)/(tabs)/home' as any);
+              } else {
+                router.replace('/(partner)/auth/login' as any);
+              }
+            }).catch(() => {
+              router.replace('/(partner)/auth/login' as any);
+            });
+          });
+        } else {
+          router.replace('/(auth)/otp');
+        }
+      }
+    }, 1400); 
+    return () => clearTimeout(timer); 
+  }, [isLoading, user]);
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+  return <View style={styles.page}><SafeAreaView style={styles.safe}><View style={styles.grid} /><Image source={require('@/assets/images/fixgo.png')} contentFit="contain" style={styles.logo} /></SafeAreaView></View>;
 }
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
+const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: FixGoColors.primary }, safe: { flex: 1, alignItems: 'center', justifyContent: 'center' }, grid: { ...StyleSheet.absoluteFill, opacity: 0.14, borderWidth: 1, borderColor: FixGoColors.accent }, logo: { width: 220, height: 120 } });
