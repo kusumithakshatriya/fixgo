@@ -8,10 +8,12 @@ import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme
 import { useAuth } from '@/hooks/useAuth';
 import { updateTechnicianProfile } from '@/services/supabase';
 import { supabase } from '@/lib/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 export default function BasicInformationScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasDemoBooking } = useDemo();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -104,7 +106,16 @@ export default function BasicInformationScreen() {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user) {
+      if (hasDemoBooking) {
+        setIsSaving(true);
+        setTimeout(() => {
+          setIsSaving(false);
+          router.back();
+        }, 500);
+      }
+      return;
+    }
     if (isSaving) return;
     setIsSaving(true);
     try {

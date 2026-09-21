@@ -3,6 +3,27 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View, ActivityIndicator, Modal, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
+import { 
+  ChevronLeft,
+  Check,
+  MapPin,
+  Home,
+  Wrench,
+  UserRoundCog,
+  ShieldCheck,
+  Star,
+  BriefcaseBusiness,
+  Clock,
+  Phone,
+  MessageSquareText,
+  FileText,
+  IndianRupee,
+  CreditCard,
+  TriangleAlert,
+  CheckCircle2,
+  ChevronRight,
+  ChartNoAxesColumn
+} from 'lucide-react-native';
 
 import { ThemedText as BaseThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -27,6 +48,7 @@ import {
 } from '@/services/supabase';
 import { calculateDistanceKm } from '@/lib/location';
 import { supabase } from '@/lib/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 function ThemedText({ style, ...props }: ComponentProps<typeof BaseThemedText>) {
   return <BaseThemedText {...props} style={[styles.sans, style]} />;
@@ -46,6 +68,7 @@ const CANCEL_REASONS = [
 ];
 
 export default function RepairTrackingScreen() {
+  const { hasDemoBooking, demoBookingStatus, demoBookingDetails, updateDemoStatus } = useDemo();
   const { 
     bookingId,
     technicianId,
@@ -87,6 +110,40 @@ export default function RepairTrackingScreen() {
 
   const [techDetails, setTechDetails] = useState<{name: string, rating: number, jobs: number} | null>(null);
   const [currentTechId, setCurrentTechId] = useState<string | undefined>(technicianId);
+
+  useEffect(() => {
+    if (hasDemoBooking && demoBookingStatus) {
+      setBookingStatus(demoBookingStatus);
+      if (demoBookingStatus === 'Awaiting Payment') {
+        setPayment({
+          id: 'demo-payment-id',
+          booking_id: demoBookingDetails?.requestId || 'demo-booking-id',
+          customer_id: 'demo-customer',
+          technician_id: demoBookingDetails?.technicianId || 'demo-tech-id',
+          base_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          additional_charges: 0,
+          total_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          platform_fee: 0,
+          final_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          status: 'pending'
+        } as unknown as Payment);
+      } else if (demoBookingStatus === 'Completed') {
+        setPayment({
+          id: 'demo-payment-id',
+          booking_id: demoBookingDetails?.requestId || 'demo-booking-id',
+          customer_id: 'demo-customer',
+          technician_id: demoBookingDetails?.technicianId || 'demo-tech-id',
+          base_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          additional_charges: 0,
+          total_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          platform_fee: 0,
+          final_amount: demoBookingDetails?.price ? parseFloat(demoBookingDetails.price.replace(/[^0-9]/g, '')) : 0,
+          status: 'completed',
+          transaction_id: 'DEMO_TXN_12345'
+        } as unknown as Payment);
+      }
+    }
+  }, [hasDemoBooking, demoBookingStatus]);
 
   useEffect(() => {
     (async () => {
@@ -206,6 +263,13 @@ export default function RepairTrackingScreen() {
     if (!payment) return;
     setIsProcessingPayment(true);
     try {
+      if (hasDemoBooking) {
+        // Simulate a tiny delay for demo
+        await new Promise(r => setTimeout(r, 1000));
+        await updateDemoStatus('Completed');
+        return;
+      }
+
       const orderData = await createRazorpayOrder(bookingId!);
       
       const options = {
@@ -381,9 +445,9 @@ export default function RepairTrackingScreen() {
 
   return <View style={styles.page}><SafeAreaView edges={['top']} style={styles.safeArea}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><SymbolView name="chevron.left" size={16} tintColor={FixGoColors.primary} /><ThemedText style={styles.backText}>Back</ThemedText></Pressable><ThemedText style={styles.headerTitle}>Track Your Repair</ThemedText><View style={styles.headerSpacer} /></View>
+      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><ChevronLeft size={16} color={FixGoColors.primary} /><ThemedText style={styles.backText}>Back</ThemedText></Pressable><ThemedText style={styles.headerTitle}>Track Your Repair</ThemedText><View style={styles.headerSpacer} /></View>
 
-      <View style={styles.statusCard}><View style={styles.statusTop}><View style={styles.statusIcon}><SymbolView name="checkmark" size={18} tintColor={FixGoColors.card} /></View><View style={styles.statusCopy}><ThemedText style={styles.statusKicker}>BOOKING STATUS</ThemedText><ThemedText style={styles.statusTitle}>{statusTitle}</ThemedText><ThemedText style={styles.statusDetail}>{statusDetail}</ThemedText></View></View><View style={styles.etaRow}><View><ThemedText style={styles.etaLabel}>{isCompleted ? 'SERVICE' : 'EXPECTED ARRIVAL'}</ThemedText><ThemedText style={styles.eta}>{isCompleted ? 'COMPLETED' : 'ETA unavailable'}</ThemedText></View><View style={[styles.liveBadge, isCompleted && { backgroundColor: FixGoColors.success }]}><View style={[styles.liveDot, isCompleted && { backgroundColor: FixGoColors.card }]} /><ThemedText style={[styles.liveText, isCompleted && { color: FixGoColors.card }]}>{liveText}</ThemedText></View></View></View>
+      <View style={styles.statusCard}><View style={styles.statusTop}><View style={styles.statusIcon}><Check size={18} color={FixGoColors.card} /></View><View style={styles.statusCopy}><ThemedText style={styles.statusKicker}>BOOKING STATUS</ThemedText><ThemedText style={styles.statusTitle}>{statusTitle}</ThemedText><ThemedText style={styles.statusDetail}>{statusDetail}</ThemedText></View></View><View style={styles.etaRow}><View><ThemedText style={styles.etaLabel}>{isCompleted ? 'SERVICE' : 'EXPECTED ARRIVAL'}</ThemedText><ThemedText style={styles.eta}>{isCompleted ? 'COMPLETED' : 'ETA unavailable'}</ThemedText></View><View style={[styles.liveBadge, isCompleted && { backgroundColor: FixGoColors.success }]}><View style={[styles.liveDot, isCompleted && { backgroundColor: FixGoColors.card }]} /><ThemedText style={[styles.liveText, isCompleted && { color: FixGoColors.card }]}>{liveText}</ThemedText></View></View></View>
 
       {bStatus !== 'Cancelled' && (
         <View style={styles.mapCard}>
@@ -404,20 +468,20 @@ export default function RepairTrackingScreen() {
             )}
           </View>
         </View>
-        <View style={styles.mapVisual}><View style={styles.mapGrid} /><View style={styles.route}><View style={styles.routeLine} /><View style={styles.routeDot} /></View><View style={styles.techPin}><SymbolView name="wrench.and.screwdriver.fill" size={15} tintColor={FixGoColors.card} /></View><View style={styles.homePin}><SymbolView name="house.fill" size={15} tintColor={FixGoColors.card} /></View><View style={styles.techCaption}><ThemedText style={styles.captionText}>Technician</ThemedText></View><View style={styles.homeCaption}><ThemedText style={styles.captionText}>Your home</ThemedText></View></View>
+        <View style={styles.mapVisual}><View style={styles.mapGrid} /><View style={styles.route}><View style={styles.routeLine} /><View style={styles.routeDot} /></View><View style={styles.techPin}><Wrench size={15} color={FixGoColors.card} /></View><View style={styles.homePin}><Home size={15} color={FixGoColors.card} /></View><View style={styles.techCaption}><ThemedText style={styles.captionText}>Technician</ThemedText></View><View style={styles.homeCaption}><ThemedText style={styles.captionText}>Your home</ThemedText></View></View>
       </View>
       )}
 
       {bStatus !== 'Cancelled' && (
         <>
-          <SectionTitle icon="person.fill" title="Your technician" />
-          <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techInfo}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.metrics}><Metric icon="star.fill" value={`${rating}`} label="rating" accent /><Metric icon="briefcase.fill" value={`${jobs} jobs`} label="completed" /><Metric icon="clock.fill" value={`${displayArrival}`} label="ETA" /></View><View style={styles.techActions}><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Call')} style={styles.secondaryButton}><SymbolView name="phone.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Call</ThemedText></Pressable><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Chat')} style={styles.secondaryButton}><SymbolView name="message.fill" size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Chat</ThemedText></Pressable></View></View>
+          <SectionTitle icon={<UserRoundCog size={15} color={FixGoColors.primary} />} title="Your technician" />
+          <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techInfo}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><ShieldCheck size={14} color={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.metrics}><Metric icon={<Star size={13} color="#D89617" />} value={`${rating}`} label="rating" accent /><Metric icon={<BriefcaseBusiness size={13} color={FixGoColors.primary} />} value={`${jobs} jobs`} label="completed" /><Metric icon={<Clock size={13} color={FixGoColors.primary} />} value={`${displayArrival}`} label="ETA" /></View><View style={styles.techActions}><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Call')} style={styles.secondaryButton}><Phone size={15} color={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Call</ThemedText></Pressable><Pressable accessibilityRole="button" onPress={() => showPlaceholder('Chat')} style={styles.secondaryButton}><MessageSquareText size={15} color={FixGoColors.primary} /><ThemedText style={styles.secondaryText}>Chat</ThemedText></Pressable></View></View>
         </>
       )}
 
       {charges.length > 0 && bookingStatus !== 'Awaiting Payment' && (
         <View style={{ gap: 12, marginTop: 8 }}>
-          <SectionTitle icon="wrench.and.screwdriver.fill" title="Additional Charges" />
+          <SectionTitle icon={<Wrench size={15} color={FixGoColors.primary} />} title="Additional Charges" />
           {charges.map(charge => (
             <View key={charge.id} style={styles.chargeCard}>
               <ThemedText style={styles.chargeKicker}>ADDITIONAL CHARGE REQUEST</ThemedText>
@@ -463,7 +527,7 @@ export default function RepairTrackingScreen() {
 
       {bookingStatus === 'Awaiting Payment' && payment && (
         <View style={{ gap: 12, marginTop: 8 }}>
-          <SectionTitle icon="chart.bar.fill" title="PAYMENT" />
+          <SectionTitle icon={<ChartNoAxesColumn size={15} color={FixGoColors.primary} />} title="PAYMENT" />
           <View style={styles.paymentCard}>
             <View style={{ gap: 8 }}>
               <View style={styles.paymentRow}>
@@ -489,11 +553,11 @@ export default function RepairTrackingScreen() {
                 <ThemedText style={{ color: FixGoColors.primary, fontWeight: '900', fontSize: 16 }}>Choose Payment Method</ThemedText>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <Pressable style={styles.methodBtn} onPress={() => handleSelectPaymentMethod('cash')}>
-                    <SymbolView name="banknote.fill" size={20} tintColor={FixGoColors.primary} />
+                    <IndianRupee size={20} color={FixGoColors.primary} />
                     <ThemedText style={styles.methodText}>Cash</ThemedText>
                   </Pressable>
                   <Pressable style={styles.methodBtn} onPress={() => handleSelectPaymentMethod('online')}>
-                    <SymbolView name="creditcard.fill" size={20} tintColor={FixGoColors.primary} />
+                    <CreditCard size={20} color={FixGoColors.primary} />
                     <ThemedText style={styles.methodText}>Online</ThemedText>
                   </Pressable>
                 </View>
@@ -536,7 +600,7 @@ export default function RepairTrackingScreen() {
             ) : payment.payment_method === 'online' && (payment.status === 'pending' || payment.status === 'order_created') ? (
               <View style={{ gap: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FFF4E5', padding: 8, borderRadius: 8 }}>
-                  <SymbolView name="exclamationmark.triangle.fill" size={14} tintColor="#E67E22" />
+                  <TriangleAlert size={14} color="#E67E22" />
                   <ThemedText style={{ color: '#E67E22', fontWeight: '800', fontSize: 12 }}>Demo Payment</ThemedText>
                 </View>
                 <Pressable 
@@ -553,7 +617,7 @@ export default function RepairTrackingScreen() {
               </View>
             ) : (
               <View style={{ gap: 8, alignItems: 'center', paddingVertical: 12 }}>
-                <SymbolView name="checkmark.circle.fill" size={40} tintColor={FixGoColors.success} />
+                <CheckCircle2 size={40} color={FixGoColors.success} />
                 <ThemedText style={{ color: FixGoColors.success, fontSize: 18, fontWeight: '900' }}>Payment Successful</ThemedText>
                 {payment.transaction_id && (
                   <ThemedText style={{ color: FixGoColors.textSecondary, fontWeight: '700' }}>Transaction ID: {payment.transaction_id}</ThemedText>
@@ -564,15 +628,15 @@ export default function RepairTrackingScreen() {
         </View>
       )}
 
-      <SectionTitle icon="wrench.and.screwdriver.fill" title="Repair summary" />
+      <SectionTitle icon={<Wrench size={15} color={FixGoColors.primary} />} title="Repair summary" />
       <View style={styles.summaryCard}>
-        {requestId ? <><Detail icon="doc.text.fill" label="Request ID" value={String(requestId)} /><Divider /></> : null}
-        <Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={displayService} /><Divider /><Detail icon="text.alignleft" label="Request" value={displayDescription} /><Divider /><Detail icon="location.fill" label="Location" value={displayLocation} />
+        {requestId ? <><Detail icon={<FileText size={15} color={FixGoColors.primary} />} label="Request ID" value={String(requestId)} /><Divider /></> : null}
+        <Detail icon={<Wrench size={15} color={FixGoColors.primary} />} label="Selected service" value={displayService} /><Divider /><Detail icon={<MessageSquareText size={15} color={FixGoColors.primary} />} label="Request" value={displayDescription} /><Divider /><Detail icon={<MapPin size={15} color={FixGoColors.primary} />} label="Location" value={displayLocation} />
       </View>
 
       {bStatus !== 'Cancelled' && (
         <>
-          <SectionTitle icon="chart.bar.fill" title="Repair progress" />
+          <SectionTitle icon={<ChartNoAxesColumn size={15} color={FixGoColors.primary} />} title="Repair progress" />
           <View style={styles.timelineCard}>
             <Timeline label="Booking Confirmed" complete />
             <Timeline label="Technician Assigned" {...checkStatus('Assigned')} />
@@ -601,7 +665,7 @@ export default function RepairTrackingScreen() {
         </Pressable>
       )}
       </ScrollView>
-      <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.ctaButton}><ThemedText style={styles.ctaText}>View Booking Details</ThemedText><SymbolView name="arrow.right" size={16} tintColor={FixGoColors.card} /></Pressable></SafeAreaView>
+      <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.ctaButton}><ThemedText style={styles.ctaText}>View Booking Details</ThemedText><ChevronRight size={16} color={FixGoColors.card} /></Pressable></SafeAreaView>
 
       <Modal visible={showCancelModal} transparent animationType="slide" onRequestClose={() => setShowCancelModal(false)}>
         <View style={styles.modalOverlay}>
@@ -654,11 +718,11 @@ export default function RepairTrackingScreen() {
     </SafeAreaView></View>;
 }
 
-function SectionTitle({ icon, title }: { icon: 'person.fill' | 'wrench.and.screwdriver.fill' | 'chart.bar.fill'; title: string }) { return <View style={styles.sectionTitle}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
-function Metric({ icon, value, label, accent = false }: { icon: 'star.fill' | 'briefcase.fill' | 'location.fill' | 'clock.fill'; value: string; label: string; accent?: boolean }) { return <View style={styles.metric}><SymbolView name={icon} size={13} tintColor={accent ? '#D89617' : FixGoColors.primary} /><ThemedText style={styles.metricValue}>{value}</ThemedText><ThemedText style={styles.metricLabel}>{label}</ThemedText></View>; }
-function Detail({ icon, label, value }: { icon: 'wrench.and.screwdriver.fill' | 'text.alignleft' | 'location.fill' | 'doc.text.fill'; label: string; value: string }) { return <View style={styles.detail}><View style={styles.detailIcon}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /></View><View style={styles.detailCopy}><ThemedText style={styles.detailLabel}>{label}</ThemedText><ThemedText numberOfLines={2} style={styles.detailValue}>{value}</ThemedText></View></View>; }
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) { return <View style={styles.sectionTitle}>{icon}<ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
+function Metric({ icon, value, label, accent = false }: { icon: React.ReactNode; value: string; label: string; accent?: boolean }) { return <View style={styles.metric}>{icon}<ThemedText style={styles.metricValue}>{value}</ThemedText><ThemedText style={styles.metricLabel}>{label}</ThemedText></View>; }
+function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <View style={styles.detail}><View style={styles.detailIcon}>{icon}</View><View style={styles.detailCopy}><ThemedText style={styles.detailLabel}>{label}</ThemedText><ThemedText numberOfLines={2} style={styles.detailValue}>{value}</ThemedText></View></View>; }
 function Divider() { return <View style={styles.divider} />; }
-function Timeline({ label, complete = false, active = false }: { label: string; complete?: boolean; active?: boolean }) { return <View style={styles.timelineRow}><View style={styles.timelineIndicator}><View style={[styles.dot, complete && styles.completeDot, active && styles.activeDot]}>{complete ? <SymbolView name="checkmark" size={11} tintColor={FixGoColors.card} /> : active ? <View style={styles.activeInner} /> : null}</View><View style={[styles.timelineLine, label === 'Completed' && styles.lastLine]} /></View><ThemedText style={[styles.timelineText, (complete || active) && styles.timelineActive]}>{label}</ThemedText>{active ? <ThemedText style={styles.now}>NOW</ThemedText> : null}</View>; }
+function Timeline({ label, complete = false, active = false }: { label: string; complete?: boolean; active?: boolean }) { return <View style={styles.timelineRow}><View style={styles.timelineIndicator}><View style={[styles.dot, complete && styles.completeDot, active && styles.activeDot]}>{complete ? <Check size={11} color={FixGoColors.card} /> : active ? <View style={styles.activeInner} /> : null}</View><View style={[styles.timelineLine, label === 'Completed' && styles.lastLine]} /></View><ThemedText style={[styles.timelineText, (complete || active) && styles.timelineActive]}>{label}</ThemedText>{active ? <ThemedText style={styles.now}>NOW</ThemedText> : null}</View>; }
 
 const styles = StyleSheet.create({
   sans: { fontFamily: 'sans-serif' },

@@ -2,11 +2,13 @@ import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { ChevronLeft, CircleHelp, MapPin, UserRoundX, ChevronRight, ShieldCheck, Check, Star, BriefcaseBusiness, GraduationCap, Clock } from 'lucide-react-native';
+import { getServiceIcon } from '@/lib/service-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { fetchTechniciansForService, TechnicianForCustomer } from '@/services/supabase';
+import { CUSTOMER_DEMO_TECHNICIANS } from '@/data/customer-demo-data';
 
 type SortMode = 'Top rated' | 'Nearest';
 
@@ -24,7 +26,10 @@ export default function TechnicianComparisonScreen() {
     try {
       setLoading(true);
       setError('');
-      const data = await fetchTechniciansForService(service, customerLat, customerLng);
+      let data = await fetchTechniciansForService(service, customerLat, customerLng);
+      if (data.length === 0) {
+        data = CUSTOMER_DEMO_TECHNICIANS;
+      }
       setTechnicians(data);
       if (data.length > 0) {
         setSelected(data[0]);
@@ -87,14 +92,14 @@ export default function TechnicianComparisonScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.iconButton}>
-              <SymbolView name="chevron.left" size={19} tintColor={FixGoColors.primary} />
+              <ChevronLeft size={19} color={FixGoColors.primary} />
             </Pressable>
             <View style={styles.live}>
               <View style={styles.liveDot} />
               <ThemedText style={styles.liveText}>Live Dispatch</ThemedText>
             </View>
             <View style={styles.iconButton}>
-              <SymbolView name="questionmark.circle" size={20} tintColor={FixGoColors.primary} />
+              <CircleHelp size={20} color={FixGoColors.primary} />
             </View>
           </View>
           
@@ -105,12 +110,12 @@ export default function TechnicianComparisonScreen() {
           
           <View style={styles.serviceRow}>
             <View style={styles.serviceIcon}>
-              <SymbolView name="bolt.fill" size={20} tintColor={FixGoColors.primary} />
+              {getServiceIcon(service, { size: 20, color: FixGoColors.primary })}
             </View>
             <View style={styles.serviceCopy}>
               <ThemedText style={styles.serviceTitle}>{service} Service</ThemedText>
               <View style={styles.location}>
-                <SymbolView name="location.fill" size={12} tintColor={FixGoColors.success} />
+                <MapPin size={12} color={FixGoColors.success} />
                 <ThemedText numberOfLines={1} style={styles.locationText}>{location}</ThemedText>
               </View>
             </View>
@@ -145,7 +150,7 @@ export default function TechnicianComparisonScreen() {
             </View>
           ) : technicians.length === 0 ? (
             <View style={{ padding: 40, alignItems: 'center', backgroundColor: FixGoColors.card, borderRadius: Radius.medium, borderWidth: 1, borderColor: FixGoColors.border }}>
-              <SymbolView name="person.crop.circle.badge.xmark" size={40} tintColor={FixGoColors.textSecondary} />
+              <UserRoundX size={40} color={FixGoColors.textSecondary} />
               <ThemedText style={{ color: FixGoColors.text, fontWeight: '800', marginTop: 12 }}>No technicians available</ThemedText>
               <ThemedText style={{ color: FixGoColors.textSecondary, textAlign: 'center', marginTop: 4 }}>We couldn't find any available {service.toLowerCase()} experts right now. Please try again later.</ThemedText>
             </View>
@@ -172,14 +177,16 @@ export default function TechnicianComparisonScreen() {
             </View>
             <View style={styles.fee}>
               <ThemedText style={styles.feeLabel}>Visit fee</ThemedText>
-              <ThemedText style={styles.feeValue}>TBD</ThemedText>
+              <ThemedText style={styles.feeValue}>
+                {selected && 'price' in selected ? `₹${(selected as any).price}` : 'TBD'}
+              </ThemedText>
             </View>
           </View>
           <Pressable accessibilityRole="button" disabled={!selected} accessibilityLabel={selected ? `Confirm ${selected.name}` : 'Select a technician'} onPress={confirm} style={[styles.confirm, !selected && { opacity: 0.5 }]}>
             <ThemedText numberOfLines={1} style={styles.confirmText}>
               {selected ? `Confirm ${selected.name}` : 'Select a technician'}
             </ThemedText>
-            <SymbolView name="arrow.right" size={16} tintColor={FixGoColors.card} />
+            <ChevronRight size={16} color={FixGoColors.card} />
           </Pressable>
         </SafeAreaView>
       </SafeAreaView>
@@ -204,7 +211,7 @@ function TechnicianCard({ technician, service, selected, onSelect }: { technicia
           </View>
           {technician.isVerified ? (
             <View style={styles.verified}>
-              <SymbolView name="checkmark.seal.fill" size={13} tintColor={FixGoColors.success} />
+              <ShieldCheck size={13} color={FixGoColors.success} />
               <ThemedText style={styles.verifiedText}>Verified {service} expert</ThemedText>
             </View>
           ) : (
@@ -214,38 +221,38 @@ function TechnicianCard({ technician, service, selected, onSelect }: { technicia
           )}
           {technician.distanceKm !== null ? (
             <View style={styles.verified}>
-              <SymbolView name="location.fill" size={12} tintColor={FixGoColors.success} />
+              <MapPin size={12} color={FixGoColors.success} />
               <ThemedText style={styles.verifiedText}>Within service area</ThemedText>
             </View>
           ) : null}
         </View>
       </View>
       <View style={styles.stats}>
-        <Stat icon="star.fill" value={`${technician.rating.toFixed(1)}`} label="Rating" amber />
-        <Stat icon="briefcase.fill" value={`${technician.totalJobs}`} label="Jobs" />
+        <Stat icon={<Star size={13} color="#D89617" />} value={`${technician.rating.toFixed(1)}`} label="Rating" />
+        <Stat icon={<BriefcaseBusiness size={13} color={FixGoColors.primary} />} value={`${technician.totalJobs}`} label="Jobs" />
         <Stat 
-          icon="location.fill" 
+          icon={<MapPin size={13} color={FixGoColors.primary} />} 
           value={technician.roadDistanceKm !== null ? `${technician.roadDistanceKm.toFixed(1)} km` : (technician.distanceKm !== null ? `${technician.distanceKm.toFixed(1)} km` : 'N/A')} 
           label={technician.roadDistanceKm !== null ? 'Road Distance' : (technician.distanceKm !== null ? 'Distance' : 'Location unavailable')} 
         />
         <Stat 
-          icon="clock.fill" 
+          icon={<Clock size={13} color={FixGoColors.primary} />} 
           value={technician.etaMins !== null ? `${technician.etaMins} min` : 'N/A'} 
           label={technician.etaMins !== null ? 'ETA' : 'ETA unavailable'} 
         />
       </View>
       <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onSelect} style={[styles.selectButton, selected && styles.selectButtonActive]}>
-        {selected ? <SymbolView name="checkmark" size={15} tintColor={FixGoColors.card} /> : null}
+        {selected ? <Check size={15} color={FixGoColors.card} /> : null}
         <ThemedText style={[styles.selectText, selected && styles.selectTextActive]}>{selected ? 'Selected' : 'Select'}</ThemedText>
       </Pressable>
     </View>
   );
 }
 
-function Stat({ icon, value, label, amber = false }: { icon: 'star.fill' | 'briefcase.fill' | 'graduationcap.fill' | 'location.fill' | 'clock.fill'; value: string; label: string; amber?: boolean }) { 
+function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string; }) { 
   return (
     <View style={styles.stat}>
-      <SymbolView name={icon} size={13} tintColor={amber ? '#D89617' : FixGoColors.primary} />
+      {icon}
       <View>
         <ThemedText style={styles.statValue}>{value}</ThemedText>
         <ThemedText style={styles.statLabel}>{label}</ThemedText>

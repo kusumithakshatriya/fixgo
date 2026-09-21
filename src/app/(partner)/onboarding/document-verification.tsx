@@ -8,8 +8,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { fetchTechnicianDocuments, uploadTechnicianDocument, submitProfileForVerification, TechnicianDocument } from '@/services/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 export default function DocumentVerificationScreen() {
+  const { hasDemoBooking } = useDemo();
   const [documents, setDocuments] = useState<TechnicianDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState<string | null>(null);
@@ -21,6 +23,10 @@ export default function DocumentVerificationScreen() {
 
   const loadDocuments = async () => {
     try {
+      if (hasDemoBooking) {
+        setDocuments([]);
+        return;
+      }
       const docs = await fetchTechnicianDocuments();
       setDocuments(docs);
     } catch (e) {
@@ -31,6 +37,15 @@ export default function DocumentVerificationScreen() {
   };
 
   const handleUpload = async (docType: 'id_proof' | 'skill_certificate' | 'address_proof', title: string) => {
+    if (hasDemoBooking) {
+      setIsUploading(docType);
+      setTimeout(() => {
+        setIsUploading(null);
+        Alert.alert('Demo Mode', `Mock upload of ${title} succeeded.`);
+      }, 1000);
+      return;
+    }
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/png', 'application/pdf'],
@@ -60,10 +75,23 @@ export default function DocumentVerificationScreen() {
   };
 
   const handleSubmitVerification = async () => {
+    if (hasDemoBooking) {
+      setIsSubmitting(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        Alert.alert('Demo Mode', 'Mock verification submitted!');
+        router.back();
+      }, 1000);
+      return;
+    }
+
     const hasIdProof = documents.some(d => d.document_type === 'id_proof');
     const hasSkillCert = documents.some(d => d.document_type === 'skill_certificate');
 
-    if (!hasIdProof || !hasSkillCert) {}
+    if (!hasIdProof || !hasSkillCert) {
+      Alert.alert('Missing Documents', 'ID Proof and Skill Certificate are mandatory.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {

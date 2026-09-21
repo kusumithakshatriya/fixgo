@@ -4,9 +4,22 @@ import { FixGoBottomNav } from '@/components/fixgo/fixgo-bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, Spacing, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
+import { useDemo } from '@/context/demo-flow-context';
+import * as SecureStore from 'expo-secure-store';
+import { router } from 'expo-router';
 
 export default function ProfileScreen() { 
   const { user, logout } = useAuth();
+  const { clearDemo } = useDemo();
+  
+  const handleLogout = async () => {
+    await clearDemo();
+    if (user) {
+      await logout();
+    }
+    await SecureStore.deleteItemAsync('customer_demo_logged_in');
+    router.replace('/(auth)/otp' as any);
+  };
   
   return (
     <View style={styles.page}>
@@ -17,7 +30,7 @@ export default function ProfileScreen() {
         <ThemedText style={styles.copy}>Phone: {user?.phone || 'Not set'}</ThemedText>
         <ThemedText style={styles.copy}>Location: {user?.location || 'Not set'}</ThemedText>
         
-        <Pressable onPress={logout} style={styles.logoutButton}>
+        <Pressable onPress={handleLogout} style={styles.logoutButton}>
           <ThemedText style={styles.logoutText}>Logout</ThemedText>
         </Pressable>
       </SafeAreaView>

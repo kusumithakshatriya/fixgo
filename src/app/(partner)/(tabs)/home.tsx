@@ -1,14 +1,17 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Switch, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { Bell, FileText, ChevronRight, Circle, BriefcaseBusiness, IndianRupee, Star, ChartNoAxesColumn, MapPin, Search } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { getServiceIcon } from '@/lib/service-icons';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { fetchPartnerDashboardData, fetchUnreadNotificationCount, subscribeToNotifications, togglePartnerOnlineStatus, PartnerDashboardData } from '@/services/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 export default function PartnerHomeScreen() {
+  const { hasDemoBooking, demoBookingStatus } = useDemo();
   const [unreadCount, setUnreadCount] = useState(0);
   const [data, setData] = useState<PartnerDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +37,7 @@ export default function PartnerHomeScreen() {
 
   const handleToggleOnline = async (value: boolean) => {
     if (isToggling) return;
-    if (data?.verification_status !== 'verified') {
+    if (data?.verification_status !== 'verified' && !hasDemoBooking) {
       Alert.alert('Verification Required', 'You must complete verification before going online.');
       return;
     }
@@ -43,7 +46,9 @@ export default function PartnerHomeScreen() {
     // Optimistic update
     setIsOnline(value);
     try {
-      await togglePartnerOnlineStatus(value);
+      if (data?.verification_status === 'verified') {
+        await togglePartnerOnlineStatus(value);
+      }
     } catch (e) {
       // Revert on failure
       setIsOnline(!value);
@@ -61,8 +66,19 @@ export default function PartnerHomeScreen() {
     );
   }
 
-  const isVerified = data?.verification_status === 'verified';
-  const vStatus = data?.verification_status || 'incomplete';
+  const isDemo = hasDemoBooking;
+  const isVerified = isDemo || data?.verification_status === 'verified';
+  const vStatus = isDemo ? 'verified' : (data?.verification_status || 'incomplete');
+  
+  const displayData = {
+    name: isDemo ? 'Ravi Kumar' : data?.name,
+    activeJobsCount: isDemo && demoBookingStatus !== 'Completed' ? (data?.activeJobsCount || 0) + 1 : data?.activeJobsCount,
+    todaysEarnings: isDemo ? 1250 : data?.todaysEarnings,
+    todaysJobsCount: isDemo ? 2 : data?.todaysJobsCount,
+    rating: isDemo ? 4.8 : data?.rating,
+    totalJobs: isDemo ? 420 : data?.totalJobs,
+    rejection_reason: data?.rejection_reason
+  };
 
   return (
     <View style={styles.page}>
@@ -71,10 +87,10 @@ export default function PartnerHomeScreen() {
           <View style={styles.header}>
             <View style={styles.profileRow}>
               <View style={styles.avatar}>
-                <ThemedText style={styles.avatarText}>{data?.name?.charAt(0) || 'T'}</ThemedText>
+                <ThemedText style={styles.avatarText}>{displayData.name?.charAt(0) || 'T'}</ThemedText>
               </View>
               <View>
-                <ThemedText style={styles.greeting}>Hi, {data?.name?.split(' ')[0] || 'Technician'}!</ThemedText>
+                <ThemedText style={styles.greeting}>Hi, {displayData.name?.split(' ')[0] || 'Technician'}!</ThemedText>
                 <View style={styles.statusRow}>
                   <View style={[styles.statusDot, { backgroundColor: isVerified ? (isOnline ? FixGoColors.success : FixGoColors.textSecondary) : FixGoColors.warning }]} />
                   <ThemedText style={styles.statusText}>{isVerified ? (isOnline ? 'Online' : 'Offline') : 'Action Required'}</ThemedText>
@@ -83,7 +99,7 @@ export default function PartnerHomeScreen() {
             </View>
             <View style={styles.headerActions}>
               <Pressable style={styles.notificationBtn} onPress={() => router.push('/(partner)/notifications' as any)}>
-                <SymbolView name="bell.fill" size={20} tintColor={FixGoColors.primary} />
+                <Bell size={20} color={FixGoColors.primary} />
                 {unreadCount > 0 && (
                   <View style={styles.badge}>
                     <ThemedText style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</ThemedText>
@@ -113,7 +129,7 @@ export default function PartnerHomeScreen() {
             >
               <View style={styles.pendingHeader}>
                 <View style={styles.pendingBadge}>
-                  <SymbolView name="doc.text.fill" size={10} tintColor={FixGoColors.card} />
+                  <FileText size={10} color={FixGoColors.card} />
                   <ThemedText style={styles.pendingBadgeText}>
                     {vStatus === 'pending' ? 'UNDER REVIEW' : vStatus === 'rejected' ? 'ACTION NEEDED' : 'SETUP REQUIRED'}
                   </ThemedText>
@@ -125,32 +141,32 @@ export default function PartnerHomeScreen() {
                  'Complete verification to start receiving jobs'}
               </ThemedText>
 
-              {vStatus === 'rejected' && data?.rejection_reason && (
+              {vStatus === 'rejected' && displayData.rejection_reason && (
                  <ThemedText style={{color: FixGoColors.card, opacity: 0.9, fontSize: 13, marginTop: 4}}>
-                   Reason: {data.rejection_reason}
+                   Reason: {displayData.rejection_reason}
                  </ThemedText>
               )}
 
               <View style={styles.pendingAction}>
                 <ThemedText style={styles.pendingActionText}>{vStatus === 'pending' ? 'Check Status' : vStatus === 'rejected' ? 'Fix Issues' : 'Complete Setup'}</ThemedText>
-                <SymbolView name="arrow.right" size={14} tintColor={FixGoColors.card} />
+                <ChevronRight size={14} color={FixGoColors.card} />
               </View>
             </Pressable>
           )}
 
           {/* Pending Job Card (Only if verified) */}
-          {isVerified && data?.activeJobsCount !== undefined && data.activeJobsCount > 0 && (
+          {isVerified && displayData.activeJobsCount !== undefined && displayData.activeJobsCount > 0 && (
             <Pressable style={styles.pendingCard} onPress={() => router.push('/(partner)/(tabs)/orders' as any)}>
               <View style={styles.pendingHeader}>
                 <View style={styles.pendingBadge}>
-                  <SymbolView name="circle.fill" size={8} tintColor={FixGoColors.card} />
+                  <Circle size={8} color={FixGoColors.card} />
                   <ThemedText style={styles.pendingBadgeText}>ACTIVE JOBS</ThemedText>
                 </View>
               </View>
-              <ThemedText style={styles.pendingTitle}>You have {data.activeJobsCount} active job{data.activeJobsCount > 1 ? 's' : ''}</ThemedText>
+              <ThemedText style={styles.pendingTitle}>You have {displayData.activeJobsCount} active job{displayData.activeJobsCount > 1 ? 's' : ''}</ThemedText>
               <View style={styles.pendingAction}>
                 <ThemedText style={styles.pendingActionText}>View Details</ThemedText>
-                <SymbolView name="arrow.right" size={14} tintColor={FixGoColors.card} />
+                <ChevronRight size={14} color={FixGoColors.card} />
               </View>
             </Pressable>
           )}
@@ -159,51 +175,106 @@ export default function PartnerHomeScreen() {
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <View style={styles.statIconWrap}>
-                <SymbolView name="briefcase.fill" size={20} tintColor={FixGoColors.primary} />
+                <BriefcaseBusiness size={20} color={FixGoColors.primary} />
               </View>
-              <ThemedText style={styles.statValue}>{data?.todaysJobsCount || 0}</ThemedText>
+              <ThemedText style={styles.statValue}>{displayData.todaysJobsCount || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Today's Jobs</ThemedText>
             </View>
             <View style={styles.statCard}>
               <View style={styles.statIconWrap}>
-                <SymbolView name="indianrupeesign.circle.fill" size={20} tintColor={FixGoColors.primary} />
+                <IndianRupee size={20} color={FixGoColors.primary} />
               </View>
-              <ThemedText style={styles.statValue}>â‚¹{data?.todaysEarnings || 0}</ThemedText>
+              <ThemedText style={styles.statValue}>₹{displayData.todaysEarnings || 0}</ThemedText>
               <ThemedText style={styles.statLabel}>Today's Earnings</ThemedText>
             </View>
           </View>
 
-          {/* Live Radar Placeholder */}
-          <View style={styles.radarSection}>
-            <View style={styles.sectionHeader}>
-              <ThemedText style={styles.sectionTitle}>Live Radar</ThemedText>
-              <SymbolView name="location.fill" size={16} tintColor={FixGoColors.primary} />
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <View style={styles.statIconWrap}>
+                <Star size={20} color={FixGoColors.primary} />
+              </View>
+              <ThemedText style={styles.statValue}>{displayData.rating?.toFixed(1) || '0.0'}</ThemedText>
+              <ThemedText style={styles.statLabel}>Rating</ThemedText>
             </View>
-            <View style={styles.radarCard}>
-              <View style={[styles.radarMap, !isVerified && { opacity: 0.5 }]}>
-                {/* Visual placeholder for map */}
-                <View style={styles.radarCircle1}>
-                  <View style={styles.radarCircle2}>
-                    <View style={styles.radarCircle3}>
-                      <View style={styles.radarPin}>
-                        <SymbolView name="mappin.circle.fill" size={24} tintColor={FixGoColors.primary} />
+            <View style={styles.statCard}>
+              <View style={styles.statIconWrap}>
+                <ChartNoAxesColumn size={20} color={FixGoColors.primary} />
+              </View>
+              <ThemedText style={styles.statValue}>{displayData.totalJobs || 0}</ThemedText>
+              <ThemedText style={styles.statLabel}>Total Jobs</ThemedText>
+            </View>
+          </View>
+
+          {isDemo ? (
+            <View style={styles.radarSection}>
+              <View style={styles.sectionHeader}>
+                <ThemedText style={styles.sectionTitle}>Today's Jobs</ThemedText>
+                <BriefcaseBusiness size={16} color={FixGoColors.primary} />
+              </View>
+              
+              <View style={styles.demoJobsContainer}>
+                {[
+                  { id: 'job-1', name: 'Kavya Reddy', service: 'AC Repair', time: '10:00 AM', status: 'Completed', amount: 450 },
+                  { id: 'job-2', name: 'Rahul Kumar', service: 'Washing Machine Repair', time: '01:30 PM', status: 'Completed', amount: 800 },
+                  { id: 'job-3', name: 'Priya Sharma', service: 'Plumbing', time: '04:00 PM', status: 'Assigned', amount: 250 }
+                ].map((job) => (
+                  <Pressable key={job.id} style={styles.demoJobCard} onPress={() => {}}>
+                    <View style={styles.demoJobHeader}>
+                      <View style={styles.demoJobServiceRow}>
+                        {getServiceIcon(job.service, { size: 16, color: FixGoColors.primary })}
+                        <ThemedText style={styles.demoJobService}>{job.service}</ThemedText>
+                      </View>
+                      <View style={[styles.demoStatusBadge, job.status === 'Completed' && { backgroundColor: FixGoColors.card, borderColor: FixGoColors.border, borderWidth: 1 }]}>
+                        <ThemedText style={[styles.demoStatusText, job.status === 'Completed' && { color: FixGoColors.textSecondary }]}>{job.status}</ThemedText>
+                      </View>
+                    </View>
+                    <View style={styles.demoJobDetails}>
+                      <View style={styles.demoDetailRow}>
+                        <MapPin size={12} color={FixGoColors.textSecondary} />
+                        <ThemedText style={styles.demoDetailText}>{job.name}</ThemedText>
+                      </View>
+                      <View style={styles.demoDetailRow}>
+                        <Circle size={4} color={FixGoColors.border} style={{ marginHorizontal: 4 }} />
+                        <ThemedText style={styles.demoDetailText}>{job.time}</ThemedText>
+                      </View>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.radarSection}>
+              <View style={styles.sectionHeader}>
+                <ThemedText style={styles.sectionTitle}>Live Radar</ThemedText>
+                <MapPin size={16} color={FixGoColors.primary} />
+              </View>
+              <View style={styles.radarCard}>
+                <View style={[styles.radarMap, !isVerified && { opacity: 0.5 }]}>
+                  {/* Visual placeholder for map */}
+                  <View style={styles.radarCircle1}>
+                    <View style={styles.radarCircle2}>
+                      <View style={styles.radarCircle3}>
+                        <View style={styles.radarPin}>
+                          <MapPin size={24} color={FixGoColors.primary} />
+                        </View>
                       </View>
                     </View>
                   </View>
+                  <View style={styles.radarOverlay}>
+                    <ThemedText style={[styles.radarOverlayText, !isVerified && { color: FixGoColors.textSecondary }]}>
+                      {isVerified ? 'Service Area Active' : 'Radar Offline'}
+                    </ThemedText>
+                  </View>
                 </View>
-                <View style={styles.radarOverlay}>
-                  <ThemedText style={[styles.radarOverlayText, !isVerified && { color: FixGoColors.textSecondary }]}>
-                    {isVerified ? 'Service Area Active' : 'Radar Offline'}
+                <View style={styles.radarFooter}>
+                  <ThemedText style={styles.radarFooterText}>
+                    {isVerified ? (isOnline ? 'Waiting for nearby requests...' : 'You are currently offline') : 'Complete verification to activate radar'}
                   </ThemedText>
                 </View>
               </View>
-              <View style={styles.radarFooter}>
-                <ThemedText style={styles.radarFooterText}>
-                  {isVerified ? (isOnline ? 'Waiting for nearby requests...' : 'You are currently offline') : 'Complete verification to activate radar'}
-                </ThemedText>
-              </View>
             </View>
-          </View>
+          )}
 
         </ScrollView>
       </SafeAreaView>
@@ -257,6 +328,14 @@ const styles = StyleSheet.create({
   radarOverlayText: { color: FixGoColors.primary, fontSize: 11, fontWeight: '800' },
   radarFooter: { padding: Spacing.three, borderTopWidth: 1, borderColor: FixGoColors.border, backgroundColor: '#FAFAFA' },
   radarFooterText: { color: FixGoColors.textSecondary, fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  demoJobsContainer: { gap: 12 },
+  demoJobCard: { backgroundColor: FixGoColors.card, borderRadius: Radius.large, padding: Spacing.three, borderWidth: 1, borderColor: FixGoColors.border, shadowColor: FixGoColors.shadow, shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2, gap: 12 },
+  demoJobHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  demoJobServiceRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  demoJobService: { color: FixGoColors.text, fontSize: 16, fontWeight: '900' },
+  demoStatusBadge: { backgroundColor: '#E4F4F5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.pill },
+  demoStatusText: { color: FixGoColors.primary, fontSize: 11, fontWeight: '800' },
+  demoJobDetails: { flexDirection: 'row', alignItems: 'center', backgroundColor: FixGoColors.accentSurface, padding: 10, borderRadius: Radius.medium, gap: 8 },
+  demoDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  demoDetailText: { color: FixGoColors.textSecondary, fontSize: 13, fontWeight: '700' }
 });
-
-

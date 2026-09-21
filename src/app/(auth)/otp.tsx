@@ -10,14 +10,14 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function OtpScreen() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const submit = async () => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError('Enter a valid email address.');
+    const trimmedPhone = phone.trim();
+    if (!/^\d{10}$/.test(trimmedPhone)) {
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     
@@ -25,10 +25,13 @@ export default function OtpScreen() {
     setIsLoading(true);
     
     try {
-      await login(trimmedEmail);
-      router.push({ pathname: '/(auth)/otp-verification', params: { email: trimmedEmail } });
+      // Demo Customer authentication:
+      // Do not call Supabase login()
+      // Do not send an email or SMS
+      // Route directly to Customer demo OTP screen
+      router.push({ pathname: '/(auth)/otp-verification', params: { phone: trimmedPhone } });
     } catch (e: any) {
-      setError(e.message || 'Failed to send Magic Link. Please try again.');
+      setError(e.message || 'Failed to proceed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -48,20 +51,25 @@ export default function OtpScreen() {
         </View>
         <View style={styles.content}>
           <View style={styles.secureIcon}>
-            <SymbolView name="envelope.fill" size={27} tintColor={FixGoColors.primary} />
+            <SymbolView name="phone.fill" size={27} tintColor={FixGoColors.primary} />
           </View>
           <ThemedText style={styles.title}>FIXGO</ThemedText>
-          <ThemedText style={styles.description}>We'll send a magic link to your email to securely sign you in.</ThemedText>
+          <ThemedText style={styles.description}>Enter your mobile number to sign in or create an account.</ThemedText>
           
+          <View style={[styles.card, { marginTop: 10, backgroundColor: '#FFF3CD', borderColor: '#FFE69C', borderWidth: 1, padding: 12, borderRadius: Radius.medium }]}>
+            <ThemedText style={{ color: '#856404', fontWeight: 'bold' }}>Demo Mode Active</ThemedText>
+            <ThemedText style={{ color: '#856404', fontSize: 12, marginTop: 4 }}>You can enter any 10-digit mobile number to proceed.</ThemedText>
+          </View>
+
           <View style={styles.card}>
-            <ThemedText style={styles.label}>Email Address</ThemedText>
+            <ThemedText style={styles.label}>Mobile Number</ThemedText>
             <View style={[styles.inputRow, error && styles.inputError]}>
               <TextInput 
-                value={email} 
-                onChangeText={(value) => { setEmail(value); setError(''); }} 
-                keyboardType="email-address" 
-                autoCapitalize="none"
-                placeholder="Enter email address" 
+                value={phone} 
+                onChangeText={(value) => { setPhone(value.replace(/\D/g, '')); setError(''); }} 
+                keyboardType="numeric" 
+                maxLength={10}
+                placeholder="Enter 10-digit number" 
                 placeholderTextColor="#8A9A9C" 
                 style={styles.input} 
                 editable={!isLoading}
@@ -72,11 +80,11 @@ export default function OtpScreen() {
           
           <View style={styles.info}>
             <SymbolView name="lock.fill" size={14} tintColor={FixGoColors.success} />
-            <ThemedText style={styles.infoText}>Your email is securely stored and used for verification only.</ThemedText>
+            <ThemedText style={styles.infoText}>Your number is securely stored and used for verification only.</ThemedText>
           </View>
           
           <Pressable onPress={submit} style={[styles.primary, isLoading && styles.primaryDisabled]} disabled={isLoading}>
-            <ThemedText style={styles.primaryText}>{isLoading ? 'Sending...' : 'Send Magic Link  →'}</ThemedText>
+            <ThemedText style={styles.primaryText}>{isLoading ? 'Loading...' : 'Continue  →'}</ThemedText>
           </Pressable>
         </View>
         

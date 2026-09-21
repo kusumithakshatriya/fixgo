@@ -15,7 +15,11 @@ export default function PartnerNotificationsScreen() {
   const { user } = useAuth();
 
   const loadNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const data = await fetchNotifications();
       setNotifications(data);

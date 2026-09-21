@@ -1,15 +1,34 @@
 import { router, type Href, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { getActiveRequest } from '@/data/customer-flow';
+import { useDemo } from '@/context/demo-flow-context';
 import { createBooking } from '@/services/supabase';
 
+import { 
+  ChevronLeft,
+  Check,
+  UserRoundCog,
+  ShieldCheck,
+  Star,
+  BriefcaseBusiness,
+  Clock,
+  Wrench,
+  FileText,
+  MessageSquareText,
+  MapPin,
+  Calendar,
+  IndianRupee,
+  Info,
+  ChevronRight
+} from 'lucide-react-native';
+
 export default function BookingConfirmationScreen() {
+  const { setDemoBooking } = useDemo();
   const { 
     requestId, 
     technicianId,
@@ -54,7 +73,21 @@ export default function BookingConfirmationScreen() {
 
     setIsConfirming(true);
     try {
-      await createBooking(requestId, technicianId);
+      if (technicianId.startsWith('demo-tech')) {
+        await setDemoBooking({
+          requestId,
+          technicianId,
+          technicianName,
+          service: displayService,
+          price: displayPrice,
+          arrival: displayArrival,
+          location: displayLocation,
+          description: displayDescription,
+          preferredTime: displayPreferredTime
+        });
+      } else {
+        await createBooking(requestId, technicianId);
+      }
       
       router.push({ 
         pathname: '/repair-tracking', 
@@ -78,30 +111,30 @@ export default function BookingConfirmationScreen() {
 
   return <View style={styles.page}><SafeAreaView edges={['top']} style={styles.safeArea}>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><SymbolView name="chevron.left" size={16} tintColor={FixGoColors.primary} /><ThemedText style={styles.backText}>Back</ThemedText></Pressable><ThemedText style={styles.headerTitle}>Confirm Booking</ThemedText><View style={styles.headerSpacer} /></View>
-      <View style={styles.intro}><View style={styles.introIcon}><SymbolView name="checkmark" size={20} tintColor={FixGoColors.card} /></View><View style={styles.introCopy}><ThemedText style={styles.eyebrow}>ONE STEP AWAY</ThemedText><ThemedText style={styles.title}>Your expert is ready</ThemedText><ThemedText style={styles.subtitle}>Review the details below, then confirm your repair visit.</ThemedText></View></View>
+      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.back}><ChevronLeft size={16} color={FixGoColors.primary} /><ThemedText style={styles.backText}>Back</ThemedText></Pressable><ThemedText style={styles.headerTitle}>Confirm Booking</ThemedText><View style={styles.headerSpacer} /></View>
+      <View style={styles.intro}><View style={styles.introIcon}><Check size={20} color={FixGoColors.card} /></View><View style={styles.introCopy}><ThemedText style={styles.eyebrow}>ONE STEP AWAY</ThemedText><ThemedText style={styles.title}>Your expert is ready</ThemedText><ThemedText style={styles.subtitle}>Review the details below, then confirm your repair visit.</ThemedText></View></View>
 
-      <SectionTitle icon="person.fill" title="Selected technician" />
-      <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techCopy}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><SymbolView name="checkmark.seal.fill" size={14} tintColor={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.techMetrics}><Stat icon="star.fill" value={`${rating}`} label="rating" accent /><Stat icon="briefcase.fill" value={`${totalJobs} jobs`} label="completed" /><Stat icon="clock.fill" value={`${displayArrival}`} label="ETA" /></View><View style={styles.chargeRow}><View><ThemedText style={styles.chargeLabel}>Expected charge</ThemedText><ThemedText style={styles.chargeHint}>Pay after the service</ThemedText></View><ThemedText style={styles.charge}>{displayPrice}</ThemedText></View></View>
+      <SectionTitle icon={<UserRoundCog size={18} color={FixGoColors.primary} />} title="Selected technician" />
+      <View style={styles.technicianCard}><View style={styles.techTop}><View style={styles.avatar}><ThemedText style={styles.avatarText}>{initials}</ThemedText></View><View style={styles.techCopy}><View style={styles.nameRow}><ThemedText style={styles.name}>{technicianName}</ThemedText><View style={styles.verified}><ShieldCheck size={14} color={FixGoColors.success} /><ThemedText style={styles.verifiedText}>Verified</ThemedText></View></View><ThemedText style={styles.specialty}>{displayService} Specialist</ThemedText></View></View><View style={styles.techMetrics}><Stat icon={<Star size={16} color={FixGoColors.primary} />} value={`${rating}`} label="rating" accent /><Stat icon={<BriefcaseBusiness size={16} color={FixGoColors.textSecondary} />} value={`${totalJobs} jobs`} label="completed" /><Stat icon={<Clock size={16} color={FixGoColors.textSecondary} />} value={`${displayArrival}`} label="ETA" /></View><View style={styles.chargeRow}><View><ThemedText style={styles.chargeLabel}>Expected charge</ThemedText><ThemedText style={styles.chargeHint}>Pay after the service</ThemedText></View><ThemedText style={styles.charge}>{displayPrice}</ThemedText></View></View>
 
-      <SectionTitle icon="wrench.and.screwdriver.fill" title="Repair summary" />
+      <SectionTitle icon={<Wrench size={18} color={FixGoColors.primary} />} title="Repair summary" />
       <View style={styles.card}>
-        {requestId ? <><Detail icon="doc.text.fill" label="Request ID" value={String(requestId)} /><Divider /></> : null}
-        <Detail icon="wrench.and.screwdriver.fill" label="Selected service" value={displayService} /><Divider /><Detail icon="text.alignleft" label="Problem description" value={displayDescription} /><Divider /><Detail icon="clock.fill" label="Preferred time" value={displayPreferredTime} /><Divider /><Detail icon="location.fill" label="Repair location" value={displayLocation} multiLine />
+        {requestId ? <><Detail icon={<FileText size={16} color={FixGoColors.primary} />} label="Request ID" value={String(requestId)} /><Divider /></> : null}
+        <Detail icon={<Wrench size={16} color={FixGoColors.primary} />} label="Selected service" value={displayService} /><Divider /><Detail icon={<MessageSquareText size={16} color={FixGoColors.primary} />} label="Problem description" value={displayDescription} /><Divider /><Detail icon={<Clock size={16} color={FixGoColors.primary} />} label="Preferred time" value={displayPreferredTime} /><Divider /><Detail icon={<MapPin size={16} color={FixGoColors.primary} />} label="Repair location" value={displayLocation} multiLine />
       </View>
 
-      <SectionTitle icon="calendar" title="Booking details" />
-      <View style={styles.card}><Detail icon="house.fill" label="Technician visit" value="Home service visit" /><Divider /><Detail icon="clock.fill" label="Estimated arrival" value={displayArrival} /><Divider /><Detail icon="indianrupeesign.circle.fill" label="Estimated service charge" value={displayPrice} /></View>
+      <SectionTitle icon={<Calendar size={18} color={FixGoColors.primary} />} title="Booking details" />
+      <View style={styles.card}><Detail icon={<UserRoundCog size={16} color={FixGoColors.primary} />} label="Technician visit" value="Home service visit" /><Divider /><Detail icon={<Clock size={16} color={FixGoColors.primary} />} label="Estimated arrival" value={displayArrival} /><Divider /><Detail icon={<IndianRupee size={16} color={FixGoColors.primary} />} label="Estimated service charge" value={displayPrice} /></View>
 
-      <View style={styles.priceCard}><View style={styles.priceTop}><View><ThemedText style={styles.priceKicker}>ESTIMATED TOTAL</ThemedText><ThemedText style={styles.priceValue}>{displayPrice}</ThemedText></View><View style={styles.priceIcon}><SymbolView name="indianrupeesign" size={21} tintColor={FixGoColors.primary} /></View></View><View style={styles.note}><SymbolView name="info.circle.fill" size={15} tintColor={FixGoColors.textSecondary} /><ThemedText style={styles.noteText}>Final price may vary if additional work or parts are required.</ThemedText></View></View>
+      <View style={styles.priceCard}><View style={styles.priceTop}><View><ThemedText style={styles.priceKicker}>ESTIMATED TOTAL</ThemedText><ThemedText style={styles.priceValue}>{displayPrice}</ThemedText></View><View style={styles.priceIcon}><IndianRupee size={21} color={FixGoColors.primary} /></View></View><View style={styles.note}><Info size={15} color={FixGoColors.textSecondary} /><ThemedText style={styles.noteText}>Final price may vary if additional work or parts are required.</ThemedText></View></View>
     </ScrollView>
-    <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><View style={styles.ctaContent}><View><ThemedText style={styles.ctaPriceLabel}>Expected charge</ThemedText><ThemedText style={styles.ctaPrice}>{displayPrice}</ThemedText></View><Pressable accessibilityRole="button" accessibilityLabel="Confirm booking" onPress={trackRepair} disabled={isConfirming} style={[styles.confirmButton, isConfirming && { opacity: 0.7 }]}><ThemedText style={styles.confirmText}>{isConfirming ? 'Confirming...' : 'Confirm Booking'}</ThemedText>{isConfirming ? <ActivityIndicator color={FixGoColors.card} size="small" /> : <SymbolView name="arrow.right" size={16} tintColor={FixGoColors.card} />}</Pressable></View></SafeAreaView>
+    <SafeAreaView edges={['bottom']} style={styles.ctaWrap}><View style={styles.ctaContent}><View><ThemedText style={styles.ctaPriceLabel}>Expected charge</ThemedText><ThemedText style={styles.ctaPrice}>{displayPrice}</ThemedText></View><Pressable accessibilityRole="button" accessibilityLabel="Confirm booking" onPress={trackRepair} disabled={isConfirming} style={[styles.confirmButton, isConfirming && { opacity: 0.7 }]}><ThemedText style={styles.confirmText}>{isConfirming ? 'Confirming...' : 'Confirm Booking'}</ThemedText>{isConfirming ? <ActivityIndicator color={FixGoColors.card} size="small" /> : <ChevronRight size={16} color={FixGoColors.card} />}</Pressable></View></SafeAreaView>
   </SafeAreaView></View>;
 }
 
-function SectionTitle({ icon, title }: { icon: 'person.fill' | 'wrench.and.screwdriver.fill' | 'calendar'; title: string }) { return <View style={styles.sectionTitle}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /><ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
-function Stat({ icon, value, label, accent = false }: { icon: 'star.fill' | 'briefcase.fill' | 'clock.fill' | 'location.fill'; value: string; label: string; accent?: boolean }) { return <View style={styles.stat}><SymbolView name={icon} size={13} tintColor={accent ? '#D89617' : FixGoColors.primary} /><ThemedText style={styles.statValue}>{value}</ThemedText><ThemedText style={styles.statLabel}>{label}</ThemedText></View>; }
-function Detail({ icon, label, value, multiLine = false }: { icon: 'wrench.and.screwdriver.fill' | 'text.alignleft' | 'clock.fill' | 'location.fill' | 'house.fill' | 'indianrupeesign.circle.fill' | 'doc.text.fill'; label: string; value: string; multiLine?: boolean }) { return <View style={styles.detail}><View style={styles.detailIcon}><SymbolView name={icon} size={15} tintColor={FixGoColors.primary} /></View><View style={styles.detailCopy}><ThemedText style={styles.detailLabel}>{label}</ThemedText><ThemedText numberOfLines={multiLine ? 2 : 1} style={styles.detailValue}>{value}</ThemedText></View></View>; }
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) { return <View style={styles.sectionTitle}>{icon}<ThemedText style={styles.sectionText}>{title}</ThemedText></View>; }
+function Stat({ icon, value, label, accent = false }: { icon: React.ReactNode; value: string; label: string; accent?: boolean }) { return <View style={styles.stat}>{icon}<ThemedText style={styles.statValue}>{value}</ThemedText><ThemedText style={styles.statLabel}>{label}</ThemedText></View>; }
+function Detail({ icon, label, value, multiLine = false }: { icon: React.ReactNode; label: string; value: string; multiLine?: boolean }) { return <View style={styles.detail}><View style={styles.detailIcon}>{icon}</View><View style={styles.detailCopy}><ThemedText style={styles.detailLabel}>{label}</ThemedText><ThemedText numberOfLines={multiLine ? 2 : 1} style={styles.detailValue}>{value}</ThemedText></View></View>; }
 function Divider() { return <View style={styles.divider} />; }
 
 const styles = StyleSheet.create({

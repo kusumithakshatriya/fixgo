@@ -25,6 +25,8 @@ import {
   subscribeToBookingUpdates
 } from '@/services/supabase';
 
+import { useDemo } from '@/context/demo-flow-context';
+
 const CANCEL_REASONS = [
   'Customer unavailable',
   'Wrong address',
@@ -34,6 +36,7 @@ const CANCEL_REASONS = [
 ];
 
 export default function ActiveJobScreen() {
+  const { hasDemoBooking, demoBookingDetails, demoBookingStatus, updateDemoStatus } = useDemo();
   const { id } = useLocalSearchParams();
   const [job, setJob] = useState<any>(null);
   const [charges, setCharges] = useState<AdditionalChargeRequest[]>([]);
@@ -54,6 +57,30 @@ export default function ActiveJobScreen() {
 
   const loadJob = async () => {
     try {
+      if (hasDemoBooking && id === demoBookingDetails?.requestId) {
+        setJob({
+          id: demoBookingDetails.requestId,
+          request_id: demoBookingDetails.requestId,
+          status: demoBookingStatus || 'Accepted',
+          created_at: new Date().toISOString(),
+          request: {
+            service: demoBookingDetails.service,
+            description: demoBookingDetails.description,
+            address: demoBookingDetails.location,
+            latitude: 17.7,
+            longitude: 83.3,
+            preferred_time: demoBookingDetails.preferredTime,
+            customer: {
+              name: 'Demo Customer',
+              phone: '+919876543210'
+            }
+          }
+        });
+        setCharges([]);
+        setPayment(null);
+        return;
+      }
+
       const jobs = await fetchPartnerJobs();
       const found = jobs.find(j => j.id === id);
       if (found) {
@@ -75,7 +102,7 @@ export default function ActiveJobScreen() {
 
   useEffect(() => {
     if (id) loadJob();
-  }, [id]);
+  }, [id, hasDemoBooking, demoBookingDetails, demoBookingStatus]);
 
   useEffect(() => {
     if (!id || typeof id !== 'string') return;
@@ -229,8 +256,13 @@ export default function ActiveJobScreen() {
       // Generate payment / transition to Awaiting Payment
       setIsProcessing(true);
       try {
-        await createOrGetPayment(job.id);
-        await loadJob();
+        if (hasDemoBooking && job.id === demoBookingDetails?.requestId) {
+          await updateDemoStatus('Awaiting Payment');
+          await loadJob();
+        } else {
+          await createOrGetPayment(job.id);
+          await loadJob();
+        }
       } catch (e: any) {
         Alert.alert('Error', e.message || 'Could not generate payment invoice.');
       } finally {
@@ -249,8 +281,13 @@ export default function ActiveJobScreen() {
 
     setIsProcessing(true);
     try {
-      await updateBookingStatus(job.id, job.request.id, nextStatus);
-      await loadJob();
+      if (hasDemoBooking && job.id === demoBookingDetails?.requestId) {
+        await updateDemoStatus(nextStatus as any);
+        await loadJob();
+      } else {
+        await updateBookingStatus(job.id, job.request.id, nextStatus);
+        await loadJob();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not update status');
     } finally {

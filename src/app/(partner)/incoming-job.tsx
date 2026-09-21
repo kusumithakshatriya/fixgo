@@ -7,8 +7,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { fetchPartnerBookingById, processTechnicianOffer, PartnerJob } from '@/services/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 export default function IncomingJobScreen() {
+  const { hasDemoBooking, demoBookingDetails, demoBookingStatus, updateDemoStatus } = useDemo();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [job, setJob] = useState<PartnerJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,6 +21,30 @@ export default function IncomingJobScreen() {
     const loadJobDetails = async () => {
       try {
         if (!id) return;
+
+        if (hasDemoBooking && id === demoBookingDetails?.requestId) {
+          setJob({
+            id: demoBookingDetails.requestId,
+            request_id: demoBookingDetails.requestId,
+            status: demoBookingStatus || 'Technician Assigned',
+            created_at: new Date().toISOString(),
+            request: {
+              service: demoBookingDetails.service,
+              description: demoBookingDetails.description,
+              address: demoBookingDetails.location,
+              latitude: 17.7,
+              longitude: 83.3,
+              preferred_time: demoBookingDetails.preferredTime,
+              customer: {
+                name: 'Demo Customer',
+                phone: '+919876543210'
+              }
+            }
+          } as unknown as PartnerJob);
+          setTimeLeft(60);
+          return;
+        }
+
         const found = await fetchPartnerBookingById(id);
         if (found) {
           setJob(found);
@@ -47,7 +73,7 @@ export default function IncomingJobScreen() {
       }
     };
     loadJobDetails();
-  }, [id]);
+  }, [id, hasDemoBooking, demoBookingDetails, demoBookingStatus]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0 || isProcessing) return;
@@ -71,11 +97,21 @@ export default function IncomingJobScreen() {
     if (!job) return;
     setIsProcessing(true);
     try {
-      await processTechnicianOffer(job.id, action);
-      if (action === 'accept') {
-        router.replace({ pathname: '/(partner)/active-job' as any, params: { id: job.id } });
+      if (hasDemoBooking && job.id === demoBookingDetails?.requestId) {
+        if (action === 'accept') {
+          await updateDemoStatus('Accepted');
+          router.replace({ pathname: '/(partner)/active-job' as any, params: { id: job.id } });
+        } else {
+          await updateDemoStatus('Cancelled');
+          router.back();
+        }
       } else {
-        router.back();
+        await processTechnicianOffer(job.id, action);
+        if (action === 'accept') {
+          router.replace({ pathname: '/(partner)/active-job' as any, params: { id: job.id } });
+        } else {
+          router.back();
+        }
       }
     } catch (e: any) {
       if (action !== 'expire') {

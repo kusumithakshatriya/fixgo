@@ -1,19 +1,31 @@
 const IS_PARTNER = process.env.APP_VARIANT === 'partner';
+const IS_DEV = process.env.APP_ENV === 'development';
+
+let appName = 'FixGo Customer';
+let appPackage = 'com.fixgo.customer';
+
+if (IS_PARTNER) {
+  appName = 'FixGo Technician';
+  appPackage = 'com.fixgo.partner';
+} else if (IS_DEV) {
+  appName = 'FixGo Customer Dev';
+  appPackage = 'com.fixgo.customer.dev';
+}
 
 module.exports = {
   expo: {
-    name: IS_PARTNER ? "FixGo Partner" : "FixGo",
+    name: appName,
     slug: "FixGo",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
-    scheme: IS_PARTNER ? "fixgopartner" : "fixgo",
+    scheme: IS_PARTNER ? "fixgopartner" : (IS_DEV ? "fixgodev" : "fixgo"),
     userInterfaceStyle: "automatic",
     ios: {
       icon: "./assets/expo.icon"
     },
     android: {
-      package: IS_PARTNER ? "com.fixgo.partner" : "com.fixgo.customer",
+      package: appPackage,
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",

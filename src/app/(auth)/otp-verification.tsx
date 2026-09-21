@@ -1,114 +1,138 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { Image } from 'expo-image';
+
 import { ThemedText } from '@/components/themed-text';
-import { FixGoColors, Radius, Spacing } from '@/constants/theme';
-import { useAuth } from '@/hooks/useAuth';
-import * as Linking from 'expo-linking';
+import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 
 export default function OtpVerificationScreen() {
-  const { login } = useAuth();
-  const { email } = useLocalSearchParams<{ email: string }>();
-  
-  const [error, setError] = useState(''); 
-  const [seconds, setSeconds] = useState(60);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const displayEmail = email || 'your email';
-  
-  useEffect(() => { 
-    if (!seconds) return; 
-    const interval = setInterval(() => setSeconds((value) => value - 1), 1000); 
-    return () => clearInterval(interval); 
-  }, [seconds]);
-  
-  const resend = async () => {
-    if (seconds > 0) return;
-    setIsLoading(true);
-    setError('');
-    try {
-      await login(displayEmail);
-      setSeconds(60);
-    } catch (e: any) {
-      setError(e.message || 'Failed to resend Magic Link.');
-    } finally {
-      setIsLoading(false);
+  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const inputs = useRef<Array<TextInput | null>>([]);
+  const [timer, setTimer] = useState(30);
+
+  useEffect(() => {
+    let interval: any;
+    if (timer > 0) {
+      interval = setInterval(() => setTimer(t => t - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  const handleChange = (text: string, index: number) => {
+    const newCode = [...code];
+    newCode[index] = text;
+    setCode(newCode);
+
+    if (text && index < 5) {
+      inputs.current[index + 1]?.focus();
     }
   };
 
-  const openMailClient = () => {
-    if (Platform.OS === 'ios') {
-      Linking.openURL('message://');
-    } else {
-      Linking.openURL('mailto:');
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
+      inputs.current[index - 1]?.focus();
     }
   };
-  
+
+  const handleVerify = async () => {
+    const otp = code.join('');
+    if (otp.length < 6) {
+      Alert.alert('Incomplete', 'Please enter the 6-digit OTP.');
+      return;
+    }
+    
+    // For the demo flow, we bypass real authentication
+    // and route directly to the Customer Home screen.
+    await SecureStore.setItemAsync('customer_demo_logged_in', 'true');
+    router.replace('/(customer)/customer-home' as any);
+  };
+
   return (
     <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <SymbolView name="chevron.left" size={18} tintColor={FixGoColors.primary} />
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <SymbolView name="chevron.left" size={24} tintColor={FixGoColors.text} />
           </Pressable>
           <Image source={require('@/assets/images/fixgo.png')} contentFit="contain" style={styles.logo} />
-          <SymbolView name="person.circle" size={23} tintColor={FixGoColors.primary} />
+          <View style={{ width: 40 }} />
         </View>
-        <View style={styles.content}>
-          <View style={styles.secure}>
-            <SymbolView name="lock.shield.fill" size={15} tintColor={FixGoColors.success} />
-            <ThemedText style={styles.secureText}>SECURE LOGIN</ThemedText>
-          </View>
-          <View style={styles.verifyIcon}>
-            <SymbolView name="envelope.fill" size={39} tintColor={FixGoColors.primary} />
-          </View>
-          <ThemedText style={styles.title}>Check your email</ThemedText>
-          <ThemedText style={styles.subtitle}>We've sent a magic link to {displayEmail}. Click the link to securely sign in.</ThemedText>
-          
-          <ActivityIndicator size="large" color={FixGoColors.primary} style={styles.loader} />
-          
-          {error ? <ThemedText style={styles.error}>{error}</ThemedText> : <ThemedText style={styles.devHint}>Waiting for authentication...</ThemedText>}
-          
-          <Pressable onPress={openMailClient} style={styles.mailButton}>
-            <ThemedText style={styles.mailButtonText}>Open Mail App</ThemedText>
-          </Pressable>
 
-          <ThemedText style={styles.timer}>Didn't receive the link? Resend in 00:{`${seconds}`.padStart(2, '0')}</ThemedText>
-          <Pressable onPress={resend} disabled={seconds > 0 || isLoading}>
-            <ThemedText style={[styles.resend, (seconds > 0 || isLoading) && { opacity: 0.5 }]}>Resend Magic Link</ThemedText>
-          </Pressable>
+        <View style={styles.content}>
+          <ThemedText style={styles.title}>Verify it's you</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            We've sent a 6-digit demo code to <ThemedText style={styles.phoneText}>+91 {phone || 'your number'}</ThemedText>.
+          </ThemedText>
+
+          <View style={styles.otpContainer}>
+            {code.map((digit, index) => (
+              <TextInput
+                key={index}
+                ref={ref => { inputs.current[index] = ref; }}
+                style={[styles.otpInput, digit && styles.otpInputFilled]}
+                keyboardType="number-pad"
+                maxLength={1}
+                value={digit}
+                onChangeText={t => handleChange(t, index)}
+                onKeyPress={e => handleKeyPress(e, index)}
+              />
+            ))}
+          </View>
+
+          <View style={styles.resendContainer}>
+            <ThemedText style={styles.resendText}>Didn't receive the code?</ThemedText>
+            {timer > 0 ? (
+              <ThemedText style={styles.timerText}>Resend in 00:{timer.toString().padStart(2, '0')}</ThemedText>
+            ) : (
+              <Pressable onPress={() => setTimer(30)}>
+                <ThemedText style={styles.resendAction}>Resend OTP</ThemedText>
+              </Pressable>
+            )}
+          </View>
         </View>
+
         <View style={styles.footer}>
-          <SymbolView name="lock.fill" size={13} tintColor={FixGoColors.textSecondary} />
-          <ThemedText style={styles.footerText}>Protected by 256-bit secure encryption</ThemedText>
+          <Pressable 
+            style={[styles.primaryBtn, code.join('').length < 6 && styles.disabledBtn]} 
+            onPress={handleVerify}
+            disabled={code.join('').length < 6}
+          >
+            <ThemedText style={styles.primaryBtnText}>Verify & Continue</ThemedText>
+          </Pressable>
         </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({ 
-  page: { flex: 1, backgroundColor: FixGoColors.background }, 
-  safe: { flex: 1, paddingHorizontal: Spacing.four }, 
-  header: { height: 58, alignItems: 'center', justifyContent: 'space-between', flexDirection: 'row' }, 
-  back: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }, 
-  logo: { width: 82, height: 34 }, 
-  content: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14 }, 
-  secure: { flexDirection: 'row', gap: 5, backgroundColor: '#EFF9F5', borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 6 }, 
-  secureText: { color: FixGoColors.success, fontSize: 10, fontWeight: '900', letterSpacing: .6 }, 
-  verifyIcon: { height: 76, width: 76, borderRadius: 25, backgroundColor: FixGoColors.accent, alignItems: 'center', justifyContent: 'center' }, 
-  title: { color: FixGoColors.text, fontSize: 27, lineHeight: 33, fontWeight: '900', textAlign: 'center' }, 
-  subtitle: { color: FixGoColors.textSecondary, fontSize: 14, lineHeight: 21, textAlign: 'center', fontWeight: '600' }, 
-  loader: { marginVertical: 20 },
-  error: { color: '#B54747', fontSize: 12, fontWeight: '700' }, 
-  devHint: { color: FixGoColors.textSecondary, fontSize: 12, fontWeight: '700' }, 
-  timer: { color: FixGoColors.textSecondary, fontSize: 13, fontWeight: '700', marginTop: 3 }, 
-  resend: { color: FixGoColors.primary, fontSize: 13, fontWeight: '900' }, 
-  mailButton: { width: '100%', minHeight: 54, borderRadius: Radius.medium, marginTop: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: FixGoColors.primary }, 
-  mailButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' }, 
-  footer: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 12 }, 
-  footerText: { color: FixGoColors.textSecondary, fontSize: 11, fontWeight: '700' } 
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: FixGoColors.background },
+  safeArea: { flex: 1, width: '100%', alignSelf: 'center', maxWidth: MaxContentWidth, justifyContent: 'space-between' },
+  header: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  logo: { width: 82, height: 34 },
+  
+  content: { flex: 1, paddingHorizontal: Spacing.four, marginTop: Spacing.four },
+  title: { fontSize: 28, fontWeight: '900', color: FixGoColors.text, marginBottom: 8 },
+  subtitle: { fontSize: 15, fontWeight: '600', color: FixGoColors.textSecondary, marginBottom: 32, lineHeight: 22 },
+  phoneText: { color: FixGoColors.text, fontWeight: '800' },
+
+  otpContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
+  otpInput: { width: 48, height: 56, borderRadius: Radius.medium, borderWidth: 1, borderColor: FixGoColors.border, backgroundColor: FixGoColors.card, fontSize: 24, fontWeight: '800', textAlign: 'center', color: FixGoColors.text },
+  otpInputFilled: { borderColor: FixGoColors.primary, backgroundColor: FixGoColors.accentSurface },
+
+  resendContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  resendText: { color: FixGoColors.textSecondary, fontSize: 14, fontWeight: '600' },
+  timerText: { color: FixGoColors.primary, fontSize: 14, fontWeight: '800' },
+  resendAction: { color: FixGoColors.primary, fontSize: 14, fontWeight: '900' },
+
+  footer: { padding: Spacing.four, paddingBottom: Platform.OS === 'ios' ? 0 : Spacing.four },
+  primaryBtn: { backgroundColor: FixGoColors.primary, height: 56, borderRadius: Radius.medium, justifyContent: 'center', alignItems: 'center' },
+  disabledBtn: { opacity: 0.5 },
+  primaryBtnText: { color: FixGoColors.card, fontSize: 16, fontWeight: '900' }
 });

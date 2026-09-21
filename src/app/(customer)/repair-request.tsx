@@ -1,4 +1,5 @@
 import { router, type Href, useLocalSearchParams } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import { Image } from 'expo-image';
@@ -148,7 +149,29 @@ export default function RepairRequestScreen() {
 
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) throw new Error('You must be logged in to submit a request.');
+      
+      if (!user) {
+        const demoLogged = await SecureStore.getItemAsync('customer_demo_logged_in');
+        if (demoLogged === 'true') {
+          setIsSubmitting(false);
+          setUploadState('');
+          router.push({ 
+            pathname: '/technician-comparison', 
+            params: { 
+              requestId: 'demo-request', 
+              service, 
+              location: address.trim(), 
+              description: problem.trim(), 
+              preferredTime: preferredTimeLabel,
+              customerLat: lat,
+              customerLng: lng
+            } 
+          } as unknown as Href);
+          return;
+        } else {
+          throw new Error('You must be logged in to submit a request.');
+        }
+      }
 
       let finalRequestId = existingRequestId;
 
@@ -411,3 +434,6 @@ const styles = StyleSheet.create({
   timingRow: { gap: 9 }, timingOption: { minHeight: 54, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, backgroundColor: '#102D43', borderWidth: 1, borderColor: '#23435B' }, timingOptionActive: { borderColor: '#2188D5', backgroundColor: '#123752' }, radio: { height: 20, width: 20, borderRadius: 10, borderWidth: 2, borderColor: '#88A0B5', alignItems: 'center', justifyContent: 'center' }, radioActive: { borderColor: '#5FB3F1' }, radioDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: '#5FB3F1' }, timingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' }, scheduleRow: { flexDirection: 'row', gap: 10 }, scheduleInput: { flex: 1, minHeight: 52, borderRadius: 14, backgroundColor: '#102D43', borderWidth: 1, borderColor: '#23435B', color: '#FFFFFF', fontSize: 14, fontWeight: '600', paddingHorizontal: 12 }, scheduleInputPicker: { flex: 1, minHeight: 52, borderRadius: 14, backgroundColor: '#102D43', borderWidth: 1, borderColor: '#23435B', paddingHorizontal: 12, justifyContent: 'center' }, scheduleInputText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   summaryCard: { marginTop: 8, borderRadius: 20, backgroundColor: '#0C314B', padding: Spacing.three, gap: 12, borderWidth: 1, borderColor: '#24567A' }, summaryTitle: { color: '#FFFFFF', fontSize: 19, lineHeight: 25, fontWeight: '800', marginBottom: 2 }, summaryRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' }, summaryLabel: { width: 104, color: '#93B4CC', fontSize: 13, lineHeight: 19, fontWeight: '700' }, summaryValue: { flex: 1, color: '#EAF4FC', fontSize: 14, lineHeight: 20, fontWeight: '600', textAlign: 'right' }, validation: { color: '#FFD0CC', backgroundColor: '#4A2428', borderRadius: 12, padding: 12, fontSize: 14, lineHeight: 20, fontWeight: '600' }, submitButton: { minHeight: 58, borderRadius: 17, backgroundColor: '#2188D5', alignItems: 'center', justifyContent: 'center', marginTop: 2 }, submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }, pressed: { opacity: 0.8 },
 });
+
+
+

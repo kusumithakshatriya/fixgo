@@ -1359,3 +1359,89 @@ export async function updateTechnicianProfile(
     throw error;
   }
 }
+
+// ----------------------------------------------------
+// CROSS-APP DEMO FUNCTIONS
+// ----------------------------------------------------
+
+export async function createDemoBooking(payload: any) {
+  const { data, error } = await supabase
+    .from('demo_bookings')
+    .insert([{
+      status: 'Awaiting Assignment',
+      service: payload.service,
+      description: payload.description,
+      location: payload.location,
+      price: payload.price,
+      technician_id: payload.technicianId,
+      customer_name: payload.customerName || 'Demo Customer'
+    }])
+    .select('id')
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchDemoBooking(id: string) {
+  const { data, error } = await supabase
+    .from('demo_bookings')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function fetchActiveDemoBookingsForTechnician(technicianId: string) {
+  const { data, error } = await supabase
+    .from('demo_bookings')
+    .select('*')
+    .eq('technician_id', technicianId)
+    .neq('status', 'Completed')
+    .neq('status', 'Cancelled')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateDemoBookingStatusDb(id: string, status: string) {
+  const { error } = await supabase
+    .from('demo_bookings')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+}
+
+export function subscribeToDemoBookingUpdates(id: string, callback: (payload: any) => void) {
+  return supabase.channel(`demo_booking_${id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'demo_bookings',
+        filter: `id=eq.${id}`
+      },
+      callback
+    )
+    .subscribe();
+}
+
+export function subscribeToAllDemoBookingsForTechnician(technicianId: string, callback: (payload: any) => void) {
+  return supabase.channel(`demo_bookings_tech_${technicianId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'demo_bookings',
+        filter: `technician_id=eq.${technicianId}`
+      },
+      callback
+    )
+    .subscribe();
+}

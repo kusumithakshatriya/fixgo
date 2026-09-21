@@ -1,5 +1,14 @@
 {
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development",
+        "APP_VARIANT": "customer",
+        "EXPO_PUBLIC_APP_VARIANT": "customer"
+      }
+    },
     "preview-customer": {
       "android": {
         "buildType": "apk"

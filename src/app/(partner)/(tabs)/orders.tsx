@@ -1,14 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
+import { User, Calendar, IndianRupee, ChevronRight, BriefcaseBusiness } from 'lucide-react-native';
+import { getServiceIcon } from '@/lib/service-icons';
 import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { fetchPartnerJobs, PartnerJob } from '@/services/supabase';
+import { useDemo } from '@/context/demo-flow-context';
 
 export default function PartnerOrdersScreen() {
+  const { hasDemoBooking, demoBookingStatus, demoBookingDetails } = useDemo();
   const [jobs, setJobs] = useState<PartnerJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -35,7 +38,29 @@ export default function PartnerOrdersScreen() {
     loadJobs();
   }, [loadJobs]);
 
-  const filteredJobs = jobs.filter(job => {
+  let displayJobs = [...jobs];
+  if (hasDemoBooking && demoBookingDetails) {
+    displayJobs = [{
+      id: demoBookingDetails.requestId || 'demo-booking-id',
+      request_id: demoBookingDetails.requestId || 'demo-req-id',
+      status: demoBookingStatus || 'Technician Assigned',
+      created_at: new Date().toISOString(),
+      request: {
+        service: demoBookingDetails.service || 'Demo Service',
+        description: demoBookingDetails.description || 'Demo problem description',
+        address: demoBookingDetails.location || 'Demo Location',
+        latitude: 17.7,
+        longitude: 83.3,
+        preferred_time: demoBookingDetails.preferredTime || 'ASAP',
+        customer: {
+          name: 'Demo Customer',
+          phone: '+919876543210'
+        }
+      }
+    } as unknown as PartnerJob, ...displayJobs];
+  }
+
+  const filteredJobs = displayJobs.filter(job => {
     if (filter === 'Active') {
       return !['Completed', 'Rejected', 'Cancelled'].includes(job.status);
     } else {
@@ -59,7 +84,7 @@ export default function PartnerOrdersScreen() {
       >
         <View style={styles.jobHeader}>
           <View style={styles.jobServiceRow}>
-            <SymbolView name="wrench.and.screwdriver.fill" size={16} tintColor={FixGoColors.primary} />
+            {getServiceIcon(item.request.service, { size: 16, color: FixGoColors.primary })}
             <ThemedText style={styles.jobService}>{item.request.service}</ThemedText>
           </View>
           <View style={[styles.statusBadge, !isNew && { backgroundColor: FixGoColors.card, borderColor: FixGoColors.border, borderWidth: 1 }]}>
@@ -69,16 +94,16 @@ export default function PartnerOrdersScreen() {
 
         <View style={styles.jobDetails}>
           <View style={styles.detailRow}>
-            <SymbolView name="person.fill" size={14} tintColor={FixGoColors.textSecondary} />
+            <User size={14} color={FixGoColors.textSecondary} />
             <ThemedText style={styles.detailText}>{item.customer.name}</ThemedText>
           </View>
           <View style={styles.detailRow}>
-            <SymbolView name="calendar" size={14} tintColor={FixGoColors.textSecondary} />
+            <Calendar size={14} color={FixGoColors.textSecondary} />
             <ThemedText style={styles.detailText}>{item.request.preferredDate || 'Any Date'} at {item.request.preferredTime || 'Any Time'}</ThemedText>
           </View>
           {item.payment && (
             <View style={styles.detailRow}>
-              <SymbolView name="banknote.fill" size={14} tintColor={FixGoColors.success} />
+              <IndianRupee size={14} color={FixGoColors.success} />
               <ThemedText style={[styles.detailText, { color: FixGoColors.success, fontWeight: '800' }]}>
                 ₹{item.payment.final_amount} · {item.payment.status === 'completed' ? `Paid (${item.payment.payment_method})` : 'Awaiting Payment'}
               </ThemedText>
@@ -88,7 +113,7 @@ export default function PartnerOrdersScreen() {
 
         <View style={styles.cardFooter}>
           <ThemedText style={styles.footerActionText}>{isNew ? 'Review Request' : 'View Job Details'}</ThemedText>
-          <SymbolView name="chevron.right" size={14} tintColor={FixGoColors.primary} />
+          <ChevronRight size={14} color={FixGoColors.primary} />
         </View>
       </Pressable>
     );
@@ -131,7 +156,7 @@ export default function PartnerOrdersScreen() {
           />
         ) : (
           <View style={styles.centerContainer}>
-            <SymbolView name="briefcase" size={48} tintColor={FixGoColors.border} />
+            <BriefcaseBusiness size={48} color={FixGoColors.border} />
             <ThemedText style={styles.emptyText}>No {filter.toLowerCase()} jobs.</ThemedText>
           </View>
         )}

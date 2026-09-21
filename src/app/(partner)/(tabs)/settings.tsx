@@ -2,15 +2,20 @@ import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
+import {
+  IdCard, Wrench, FileCheck2, IndianRupee, Bell, Globe, Moon, CircleHelp, Shield, FileText, Star, LogOut, ChevronRight
+} from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { FixGoColors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
+import { useDemo } from '@/context/demo-flow-context';
 
 import * as SecureStore from 'expo-secure-store';
 
 export default function PartnerSettingsScreen() {
   const { user, logout } = useAuth();
+  const { clearDemo } = useDemo();
 
   const handleLogout = async () => {
     try {
@@ -18,6 +23,7 @@ export default function PartnerSettingsScreen() {
         await logout();
       }
       // Clear demo login state
+      await clearDemo();
       await SecureStore.deleteItemAsync('partner_demo_logged_in');
       router.replace('/(partner)/auth/login' as any);
     } catch (e) {
@@ -25,13 +31,13 @@ export default function PartnerSettingsScreen() {
     }
   };
 
-  const OptionRow = ({ icon, title, onPress }: { icon: any, title: string, onPress?: () => void }) => (
+  const OptionRow = ({ icon, title, onPress }: { icon: React.ReactNode, title: string, onPress?: () => void }) => (
     <Pressable style={styles.optionRow} onPress={onPress}>
       <View style={styles.optionIcon}>
-        <SymbolView name={icon} size={18} tintColor={FixGoColors.primary} />
+        {icon}
       </View>
       <ThemedText style={styles.optionText}>{title}</ThemedText>
-      <SymbolView name="chevron.right" size={16} tintColor={FixGoColors.textSecondary} />
+      <ChevronRight size={16} color={FixGoColors.textSecondary} />
     </Pressable>
   );
 
@@ -48,6 +54,9 @@ export default function PartnerSettingsScreen() {
     <View style={styles.page}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <ThemedText style={styles.headerTitle}>Profile & Settings</ThemedText>
+          </View>
           
           {/* Header Profile */}
           <View style={styles.profileCard}>
@@ -64,27 +73,27 @@ export default function PartnerSettingsScreen() {
           </View>
 
           <Section title="Account Setup">
-            <OptionRow icon="person.text.rectangle" title="Basic Information" onPress={() => router.push('/(partner)/onboarding/basic-information' as any)} />
-            <OptionRow icon="wrench.and.screwdriver" title="Skills & Specializations" onPress={() => router.push('/(partner)/onboarding/basic-information' as any)} />
-            <OptionRow icon="doc.badge.gearshape" title="Document Verification" onPress={() => router.push('/(partner)/onboarding/document-verification' as any)} />
-            <OptionRow icon="indianrupeesign.circle" title="Payment Methods" onPress={() => router.push('/(partner)/onboarding/payment-methods' as any)} />
+            <OptionRow icon={<IdCard size={18} color={FixGoColors.primary} />} title="Basic Information" onPress={() => router.push('/(partner)/onboarding/basic-information' as any)} />
+            <OptionRow icon={<Wrench size={18} color={FixGoColors.primary} />} title="Skills & Specializations" onPress={() => router.push('/(partner)/onboarding/basic-information' as any)} />
+            <OptionRow icon={<FileCheck2 size={18} color={FixGoColors.primary} />} title="Document Verification" onPress={() => router.push('/(partner)/onboarding/document-verification' as any)} />
+            <OptionRow icon={<IndianRupee size={18} color={FixGoColors.primary} />} title="Payment Methods" onPress={() => router.push('/(partner)/onboarding/payment-methods' as any)} />
           </Section>
 
           <Section title="Preferences">
-            <OptionRow icon="bell.fill" title="Notifications" />
-            <OptionRow icon="globe" title="Language" />
-            <OptionRow icon="moon.fill" title="Theme" />
+            <OptionRow icon={<Bell size={18} color={FixGoColors.primary} />} title="Notifications" />
+            <OptionRow icon={<Globe size={18} color={FixGoColors.primary} />} title="Language" />
+            <OptionRow icon={<Moon size={18} color={FixGoColors.primary} />} title="Theme" />
           </Section>
 
           <Section title="Support & About">
-            <OptionRow icon="questionmark.circle.fill" title="Help Center" />
-            <OptionRow icon="lock.shield.fill" title="Privacy Policy" />
-            <OptionRow icon="doc.text.fill" title="Terms & Conditions" />
-            <OptionRow icon="star.fill" title="Rate the App" />
+            <OptionRow icon={<CircleHelp size={18} color={FixGoColors.primary} />} title="Help Center" />
+            <OptionRow icon={<Shield size={18} color={FixGoColors.primary} />} title="Privacy Policy" />
+            <OptionRow icon={<FileText size={18} color={FixGoColors.primary} />} title="Terms & Conditions" />
+            <OptionRow icon={<Star size={18} color={FixGoColors.primary} />} title="Rate the App" />
           </Section>
 
           <Pressable style={styles.logoutBtn} onPress={handleLogout}>
-            <SymbolView name="rectangle.portrait.and.arrow.right" size={18} tintColor="#B54747" />
+            <LogOut size={18} color="#B54747" />
             <ThemedText style={styles.logoutText}>Logout</ThemedText>
           </Pressable>
           
@@ -98,6 +107,9 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: FixGoColors.background },
   safeArea: { flex: 1, width: '100%', alignSelf: 'center', maxWidth: MaxContentWidth },
   content: { padding: Spacing.four, paddingBottom: 100, gap: 24 },
+  
+  header: { paddingBottom: Spacing.two },
+  headerTitle: { color: FixGoColors.text, fontSize: 24, fontWeight: '900' },
   
   profileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: FixGoColors.card, padding: Spacing.three, borderRadius: Radius.large, borderWidth: 1, borderColor: FixGoColors.border },
   avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: FixGoColors.primary, justifyContent: 'center', alignItems: 'center' },
